@@ -88,7 +88,7 @@ reply → Compliance Validation passes → Audit Trace recorded.
 
 ```json
 {
-  "decision": "draft",
+  "decision": "AUTO_REPLY",
   "intent": "cancellation_request",
   "draft": "Hello, your order 10293 is eligible for cancellation and has been cancelled...",
   "evidence": [
@@ -98,14 +98,19 @@ reply → Compliance Validation passes → Audit Trace recorded.
   "decisions": [
     { "stage": "DataSufficiencyEvaluation", "result": "sufficient", "reasonCode": "DATA_OK" },
     { "stage": "BusinessRuleEngine", "result": "within_window", "reasonCode": "CANCEL_ALLOWED" },
-    { "stage": "DecisionGate", "result": "draft", "reasonCode": "GATE_DRAFT" },
+    { "stage": "DecisionGate", "result": "AUTO_REPLY", "reasonCode": "AUTO_REPLY_ALLOWED" },
     { "stage": "ComplianceValidation", "result": "passed", "reasonCode": "GROUNDED_OK" }
   ]
 }
 ```
 
-An escalation produces the same shape with `"decision": "escalate"`, no `draft`, and a
-reason code explaining the escalation.
+An escalation produces the same shape with `"decision": "HUMAN_ESCALATION"`, no `draft`,
+and a reason code explaining the escalation.
+
+> Note: `decision` uses the canonical `Decision` enum values established in Phase 2
+> (`AUTO_REPLY`, `ASK_FOR_MORE_INFORMATION`, `HUMAN_ESCALATION`). The other `reasonCode`
+> values shown above are illustrative; the authoritative `ReasonCode` set lives in
+> `src/domain`. See [decisions.md](decisions.md) (ADR-006).
 
 ## Supported Workflows
 

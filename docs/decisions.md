@@ -199,3 +199,48 @@ Advantages:
 Trade-off:
 
 - more deterministic code must be written and maintained.
+
+---
+
+# ADR-006
+
+## Title
+
+Phase 2 establishes the canonical domain enum values.
+
+## Status
+
+Accepted
+
+## Context
+
+Early documentation (the architecture worked example) used informal decision values such
+as `draft` and `escalate`. Phase 2 introduces the typed domain model in code, which must
+be the single source of truth for the pipeline's vocabulary.
+
+## Decision
+
+The canonical enum values live in `src/domain` and are enforced at runtime by Zod schemas
+in `src/schemas`:
+
+- `Intent`: `cancellation_request`, `damaged_item`, `invoice_question`,
+  `product_availability`, `unknown`, `out_of_scope`
+- `Workflow`: `cancellation`, `damaged_item`, `invoice`, `product_availability`,
+  `unsupported`
+- `Decision`: `AUTO_REPLY`, `ASK_FOR_MORE_INFORMATION`, `HUMAN_ESCALATION`
+- `RiskLevel`: `low`, `medium`, `high`
+- `ReasonCode`: the explainability codes defined in `src/domain/enums.ts`
+
+The architecture worked example was updated to use the canonical `Decision` values. Any
+`reasonCode` literals shown in that example remain illustrative and non-normative.
+
+## Consequences
+
+Advantages:
+
+- one source of truth for the domain vocabulary, enforced at runtime
+- documentation and code no longer disagree on decision values
+
+Trade-off:
+
+- documentation examples must track the enum definitions when they change.
