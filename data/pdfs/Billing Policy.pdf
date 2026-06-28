@@ -1,0 +1,248 @@
+%PDF-1.4
+%‚„œ”
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Count 3 /Kids [5 0 R 7 0 R 9 0 R] >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>
+endobj
+5 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 6 0 R >>
+endobj
+6 0 obj
+<< /Length 2265 >>
+stream
+BT
+/F2 19.0 Tf
+1 0 0 1 64.0 730.0 Tm
+(Billing Policy) Tj
+/F1 11.0 Tf
+1 0 0 1 64.0 704.0 Tm
+1 0 0 1 64.0 690.0 Tm
+(Document owner: Finance) Tj
+1 0 0 1 64.0 676.0 Tm
+(Version: 1.0) Tj
+1 0 0 1 64.0 662.0 Tm
+(Effective date: 2026-01-01) Tj
+1 0 0 1 64.0 644.0 Tm
+/F2 14.0 Tf
+1 0 0 1 64.0 620.0 Tm
+(1. Purpose and Scope) Tj
+/F1 11.0 Tf
+1 0 0 1 64.0 599.0 Tm
+1 0 0 1 64.0 585.0 Tm
+(This policy describes how Harbor & Pine Outfitters issues invoices, collects payment,) Tj
+1 0 0 1 64.0 571.0 Tm
+(and processes refunds for consumer orders. It also defines how invoice questions) Tj
+1 0 0 1 64.0 557.0 Tm
+(received by email are answered.) Tj
+1 0 0 1 64.0 539.0 Tm
+/F2 14.0 Tf
+1 0 0 1 64.0 515.0 Tm
+(2. Invoices) Tj
+/F1 11.0 Tf
+1 0 0 1 64.0 494.0 Tm
+/F2 12.0 Tf
+1 0 0 1 64.0 474.0 Tm
+(2.1 Issuance) Tj
+/F1 11.0 Tf
+1 0 0 1 64.0 455.0 Tm
+1 0 0 1 64.0 441.0 Tm
+(An invoice is issued for every order at the time the order is placed. Each invoice) Tj
+1 0 0 1 64.0 427.0 Tm
+(references exactly one order and carries a unique identifier in the form) Tj
+1 0 0 1 64.0 413.0 Tm
+(INV-YYYY-NNNN.) Tj
+1 0 0 1 64.0 395.0 Tm
+/F2 12.0 Tf
+1 0 0 1 64.0 375.0 Tm
+(2.2 Invoice contents) Tj
+/F1 11.0 Tf
+1 0 0 1 64.0 356.0 Tm
+1 0 0 1 64.0 342.0 Tm
+(Every invoice records:) Tj
+1 0 0 1 64.0 324.0 Tm
+1 0 0 1 64.0 310.0 Tm
+(- the order it relates to and the customer it was issued to;) Tj
+1 0 0 1 64.0 296.0 Tm
+(- the subtotal, shipping, tax, and total amount;) Tj
+1 0 0 1 64.0 282.0 Tm
+(- the amount paid, the amount refunded, and the amount still due;) Tj
+1 0 0 1 64.0 268.0 Tm
+(- the issue date and the payment due date.) Tj
+1 0 0 1 64.0 250.0 Tm
+/F2 12.0 Tf
+1 0 0 1 64.0 230.0 Tm
+(2.3 Currency and tax) Tj
+/F1 11.0 Tf
+1 0 0 1 64.0 211.0 Tm
+1 0 0 1 64.0 197.0 Tm
+(All amounts are in US dollars \(USD\). Sales tax is applied at 8% of the order) Tj
+1 0 0 1 64.0 183.0 Tm
+(subtotal. Shipping is free for orders with a subtotal of 150 USD or more and) Tj
+1 0 0 1 64.0 169.0 Tm
+(a flat 7.95 USD otherwise.) Tj
+1 0 0 1 64.0 151.0 Tm
+/F2 14.0 Tf
+1 0 0 1 64.0 127.0 Tm
+(3. Payment Terms) Tj
+/F1 11.0 Tf
+1 0 0 1 64.0 106.0 Tm
+1 0 0 1 64.0 92.0 Tm
+(Payment is due within 14 days of the invoice issue date. Accepted payment methods) Tj
+1 0 0 1 64.0 78.0 Tm
+(are credit card, PayPal, and bank transfer.) Tj
+ET
+endstream
+endobj
+7 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 8 0 R >>
+endobj
+8 0 obj
+<< /Length 2666 >>
+stream
+BT
+/F1 11.0 Tf
+1 0 0 1 64.0 740.0 Tm
+/F2 14.0 Tf
+1 0 0 1 64.0 716.0 Tm
+(4. Invoice Statuses) Tj
+/F1 11.0 Tf
+1 0 0 1 64.0 695.0 Tm
+1 0 0 1 64.0 681.0 Tm
+(An invoice carries exactly one of the following statuses:) Tj
+1 0 0 1 64.0 663.0 Tm
+/F1 10.0 Tf
+1 0 0 1 64.0 649.0 Tm
+(Status Meaning) Tj
+1 0 0 1 64.0 636.0 Tm
+(unpaid Issued, not yet paid, and not past its due date.) Tj
+1 0 0 1 64.0 623.0 Tm
+(paid Paid in full; nothing is outstanding.) Tj
+1 0 0 1 64.0 610.0 Tm
+(partially_paid Part of the balance has been paid; a balance remains due.) Tj
+1 0 0 1 64.0 597.0 Tm
+(overdue Unpaid after the due date has passed.) Tj
+1 0 0 1 64.0 584.0 Tm
+(refunded Paid in full and then fully refunded.) Tj
+1 0 0 1 64.0 571.0 Tm
+(voided Cancelled before payment; nothing is owed.) Tj
+/F1 11.0 Tf
+1 0 0 1 64.0 554.0 Tm
+/F2 14.0 Tf
+1 0 0 1 64.0 530.0 Tm
+(5. Answering Invoice Questions) Tj
+/F1 11.0 Tf
+1 0 0 1 64.0 509.0 Tm
+1 0 0 1 64.0 495.0 Tm
+(When a customer asks about an invoice, the answer must be grounded in the stored) Tj
+1 0 0 1 64.0 481.0 Tm
+(invoice record. Common questions and how to answer them:) Tj
+1 0 0 1 64.0 463.0 Tm
+1 0 0 1 64.0 449.0 Tm
+(- "How much do I owe?" - Report the amountDue and the due date.) Tj
+1 0 0 1 64.0 435.0 Tm
+(- "Has my payment gone through?" - Report the status and, if paid, the paid date.) Tj
+1 0 0 1 64.0 421.0 Tm
+(- "Why was I charged this amount?" - Break down the subtotal, shipping, and tax.) Tj
+1 0 0 1 64.0 407.0 Tm
+(- "Is this invoice overdue?" - An invoice is overdue only when its status is) Tj
+1 0 0 1 64.0 393.0 Tm
+(overdue.) Tj
+1 0 0 1 64.0 375.0 Tm
+1 0 0 1 64.0 361.0 Tm
+(If the invoice referenced by the customer cannot be located, or the question concerns) Tj
+1 0 0 1 64.0 347.0 Tm
+(a dispute or a chargeback, the case is escalated to a human agent under the) Tj
+1 0 0 1 64.0 333.0 Tm
+(Customer Service Policy.) Tj
+1 0 0 1 64.0 315.0 Tm
+/F2 14.0 Tf
+1 0 0 1 64.0 291.0 Tm
+(6. Refunds) Tj
+/F1 11.0 Tf
+1 0 0 1 64.0 270.0 Tm
+/F2 12.0 Tf
+1 0 0 1 64.0 250.0 Tm
+(6.1 When a refund is issued) Tj
+/F1 11.0 Tf
+1 0 0 1 64.0 231.0 Tm
+1 0 0 1 64.0 217.0 Tm
+(A refund is issued when:) Tj
+1 0 0 1 64.0 199.0 Tm
+1 0 0 1 64.0 185.0 Tm
+(- an order is cancelled after payment has been captured;) Tj
+1 0 0 1 64.0 171.0 Tm
+(- an approved damaged-item claim is resolved with a refund rather than a replacement;) Tj
+1 0 0 1 64.0 157.0 Tm
+(- an undamaged item is returned within the 30-day return window.) Tj
+1 0 0 1 64.0 139.0 Tm
+/F2 12.0 Tf
+1 0 0 1 64.0 119.0 Tm
+(6.2 How refunds are processed) Tj
+/F1 11.0 Tf
+1 0 0 1 64.0 100.0 Tm
+1 0 0 1 64.0 86.0 Tm
+(Refunds are returned to the original payment method. A full refund sets the invoice) Tj
+ET
+endstream
+endobj
+9 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 10 0 R >>
+endobj
+10 0 obj
+<< /Length 838 >>
+stream
+BT
+/F1 11.0 Tf
+1 0 0 1 64.0 740.0 Tm
+(status to refunded, records the refunded amount, and leaves nothing due. Refunds are) Tj
+1 0 0 1 64.0 726.0 Tm
+(normally processed within 5 to 10 business days.) Tj
+1 0 0 1 64.0 708.0 Tm
+/F2 14.0 Tf
+1 0 0 1 64.0 684.0 Tm
+(7. Overdue Accounts) Tj
+/F1 11.0 Tf
+1 0 0 1 64.0 663.0 Tm
+1 0 0 1 64.0 649.0 Tm
+(A first reminder is sent when an invoice becomes overdue. Repeated non-payment is) Tj
+1 0 0 1 64.0 635.0 Tm
+(handled by Finance and is outside the scope of automated email responses.) Tj
+1 0 0 1 64.0 617.0 Tm
+/F2 14.0 Tf
+1 0 0 1 64.0 593.0 Tm
+(8. Disputes) Tj
+/F1 11.0 Tf
+1 0 0 1 64.0 572.0 Tm
+1 0 0 1 64.0 558.0 Tm
+(Billing disputes, chargebacks, and requests for goodwill adjustments are not resolved) Tj
+1 0 0 1 64.0 544.0 Tm
+(automatically. These are always escalated to a human agent.) Tj
+ET
+endstream
+endobj
+xref
+0 11
+0000000000 65535 f 
+0000000015 00000 n 
+0000000064 00000 n 
+0000000133 00000 n 
+0000000203 00000 n 
+0000000278 00000 n 
+0000000414 00000 n 
+0000002730 00000 n 
+0000002866 00000 n 
+0000005583 00000 n 
+0000005720 00000 n 
+trailer
+<< /Size 11 /Root 1 0 R >>
+startxref
+6609
+%%EOF

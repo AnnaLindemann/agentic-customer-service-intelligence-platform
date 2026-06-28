@@ -1,0 +1,203 @@
+%PDF-1.4
+%‚„œ”
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Count 2 /Kids [5 0 R 7 0 R] >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>
+endobj
+5 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 6 0 R >>
+endobj
+6 0 obj
+<< /Length 2635 >>
+stream
+BT
+/F2 19.0 Tf
+1 0 0 1 64.0 730.0 Tm
+(Product Availability Policy) Tj
+/F1 11.0 Tf
+1 0 0 1 64.0 704.0 Tm
+1 0 0 1 64.0 690.0 Tm
+(Document owner: Merchandising & Inventory) Tj
+1 0 0 1 64.0 676.0 Tm
+(Version: 1.0) Tj
+1 0 0 1 64.0 662.0 Tm
+(Effective date: 2026-01-01) Tj
+1 0 0 1 64.0 644.0 Tm
+/F2 14.0 Tf
+1 0 0 1 64.0 620.0 Tm
+(1. Purpose and Scope) Tj
+/F1 11.0 Tf
+1 0 0 1 64.0 599.0 Tm
+1 0 0 1 64.0 585.0 Tm
+(This policy defines how Harbor & Pine Outfitters describes product availability and) Tj
+1 0 0 1 64.0 571.0 Tm
+(how availability questions received by email are answered. Availability answers must) Tj
+1 0 0 1 64.0 557.0 Tm
+(be grounded in the current inventory record for the product.) Tj
+1 0 0 1 64.0 539.0 Tm
+/F2 14.0 Tf
+1 0 0 1 64.0 515.0 Tm
+(2. Availability Statuses) Tj
+/F1 11.0 Tf
+1 0 0 1 64.0 494.0 Tm
+1 0 0 1 64.0 480.0 Tm
+(Every product carries exactly one availability status:) Tj
+1 0 0 1 64.0 462.0 Tm
+/F1 10.0 Tf
+1 0 0 1 64.0 448.0 Tm
+(Status Meaning) Tj
+1 0 0 1 64.0 435.0 Tm
+(in_stock Available now; on-hand quantity is above the low-stock threshold.) Tj
+1 0 0 1 64.0 422.0 Tm
+(low_stock Available now, but on-hand quantity is at or below the low-stock threshold.) Tj
+1 0 0 1 64.0 409.0 Tm
+(out_of_stock Temporarily unavailable; a restock date is expected.) Tj
+1 0 0 1 64.0 396.0 Tm
+(backordered Orderable now but not yet in stock; ships on the restock date.) Tj
+1 0 0 1 64.0 383.0 Tm
+(discontinued No longer sold; will not be restocked.) Tj
+/F1 11.0 Tf
+1 0 0 1 64.0 366.0 Tm
+/F2 14.0 Tf
+1 0 0 1 64.0 342.0 Tm
+(3. On-Hand Quantity and Thresholds) Tj
+/F1 11.0 Tf
+1 0 0 1 64.0 321.0 Tm
+1 0 0 1 64.0 307.0 Tm
+(Each product records an on-hand quantity and a low-stock threshold. A product is) Tj
+1 0 0 1 64.0 293.0 Tm
+(considered low on stock when its on-hand quantity is greater than zero but at or below) Tj
+1 0 0 1 64.0 279.0 Tm
+(its threshold. Exact on-hand quantities are used internally to determine status and) Tj
+1 0 0 1 64.0 265.0 Tm
+(are not quoted to customers; customers are told the status only \(for example,) Tj
+1 0 0 1 64.0 251.0 Tm
+("in stock" or "low stock"\), not the precise count.) Tj
+1 0 0 1 64.0 233.0 Tm
+/F2 14.0 Tf
+1 0 0 1 64.0 209.0 Tm
+(4. Restock and Backorder) Tj
+/F1 11.0 Tf
+1 0 0 1 64.0 188.0 Tm
+/F2 12.0 Tf
+1 0 0 1 64.0 168.0 Tm
+(4.1 Out-of-stock items) Tj
+/F1 11.0 Tf
+1 0 0 1 64.0 149.0 Tm
+1 0 0 1 64.0 135.0 Tm
+(An out-of-stock item carries an expected restock date. The customer may be told the) Tj
+1 0 0 1 64.0 121.0 Tm
+(expected restock date and invited to order once the item is back in stock.) Tj
+1 0 0 1 64.0 103.0 Tm
+/F2 12.0 Tf
+1 0 0 1 64.0 83.0 Tm
+(4.2 Backordered items) Tj
+ET
+endstream
+endobj
+7 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 8 0 R >>
+endobj
+8 0 obj
+<< /Length 2680 >>
+stream
+BT
+/F1 11.0 Tf
+1 0 0 1 64.0 740.0 Tm
+1 0 0 1 64.0 726.0 Tm
+(A backordered item can be ordered immediately and is expected to ship on its restock) Tj
+1 0 0 1 64.0 712.0 Tm
+(date. The customer should be told the expected ship date before ordering.) Tj
+1 0 0 1 64.0 694.0 Tm
+/F2 12.0 Tf
+1 0 0 1 64.0 674.0 Tm
+(4.3 Discontinued items) Tj
+/F1 11.0 Tf
+1 0 0 1 64.0 655.0 Tm
+1 0 0 1 64.0 641.0 Tm
+(A discontinued item will not be restocked. Where a successor product exists, the) Tj
+1 0 0 1 64.0 627.0 Tm
+(customer may be informed of it, but only the existence of a successor that is recorded) Tj
+1 0 0 1 64.0 613.0 Tm
+(in the catalogue may be mentioned. No restock date is given for discontinued items.) Tj
+1 0 0 1 64.0 595.0 Tm
+/F2 14.0 Tf
+1 0 0 1 64.0 571.0 Tm
+(5. Answering Availability Questions) Tj
+/F1 11.0 Tf
+1 0 0 1 64.0 550.0 Tm
+1 0 0 1 64.0 536.0 Tm
+(When a customer asks whether a product is available, the answer must be grounded in) Tj
+1 0 0 1 64.0 522.0 Tm
+(the product's current inventory record. Answers follow this pattern:) Tj
+1 0 0 1 64.0 504.0 Tm
+1 0 0 1 64.0 490.0 Tm
+(- in_stock - Confirm the product is available to order now.) Tj
+1 0 0 1 64.0 476.0 Tm
+(- low_stock - Confirm it is available but note that stock is limited.) Tj
+1 0 0 1 64.0 462.0 Tm
+(- out_of_stock - State that it is temporarily unavailable and give the expected) Tj
+1 0 0 1 64.0 448.0 Tm
+(restock date.) Tj
+1 0 0 1 64.0 434.0 Tm
+(- backordered - State that it can be ordered now and give the expected ship date.) Tj
+1 0 0 1 64.0 420.0 Tm
+(- discontinued - State that it is no longer available and, if applicable, mention) Tj
+1 0 0 1 64.0 406.0 Tm
+(a recorded successor product.) Tj
+1 0 0 1 64.0 388.0 Tm
+1 0 0 1 64.0 374.0 Tm
+(Prices quoted to a customer must match the price recorded in the inventory record.) Tj
+1 0 0 1 64.0 356.0 Tm
+/F2 14.0 Tf
+1 0 0 1 64.0 332.0 Tm
+(6. Product Not Found) Tj
+/F1 11.0 Tf
+1 0 0 1 64.0 311.0 Tm
+1 0 0 1 64.0 297.0 Tm
+(If the product the customer refers to cannot be matched to a catalogue record, the) Tj
+1 0 0 1 64.0 283.0 Tm
+(request is escalated to a human agent under the) Tj
+1 0 0 1 64.0 269.0 Tm
+(Customer Service Policy. Availability must never be) Tj
+1 0 0 1 64.0 255.0 Tm
+(guessed for a product that is not in the catalogue.) Tj
+1 0 0 1 64.0 237.0 Tm
+/F2 14.0 Tf
+1 0 0 1 64.0 213.0 Tm
+(7. Accuracy) Tj
+/F1 11.0 Tf
+1 0 0 1 64.0 192.0 Tm
+1 0 0 1 64.0 178.0 Tm
+(Availability statuses reflect the inventory record at the time of the response. A) Tj
+1 0 0 1 64.0 164.0 Tm
+(status may change between responses as stock levels move; answers must always be based) Tj
+1 0 0 1 64.0 150.0 Tm
+(on the current record rather than a previously cached value.) Tj
+ET
+endstream
+endobj
+xref
+0 9
+0000000000 65535 f 
+0000000015 00000 n 
+0000000064 00000 n 
+0000000127 00000 n 
+0000000197 00000 n 
+0000000272 00000 n 
+0000000408 00000 n 
+0000003094 00000 n 
+0000003230 00000 n 
+trailer
+<< /Size 9 /Root 1 0 R >>
+startxref
+5961
+%%EOF

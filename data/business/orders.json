@@ -1,0 +1,331 @@
+[
+  {
+    "orderId": "10001",
+    "customerEmail": "emma.thompson@example.com",
+    "customerName": "Emma Thompson",
+    "status": "processing",
+    "placedAt": "2026-06-28T09:15:00Z",
+    "shippedAt": null,
+    "deliveredAt": null,
+    "cancelledAt": null,
+    "returnedAt": null,
+    "shippingMethod": "standard",
+    "shippingAddress": {
+      "line1": "14 Maple Court",
+      "city": "Portland",
+      "region": "OR",
+      "postalCode": "97205",
+      "country": "US"
+    },
+    "items": [
+      { "sku": "SKU-TENT-2P", "name": "Summit 2-Person Tent", "quantity": 1, "unitPrice": 189.00 }
+    ],
+    "currency": "USD",
+    "subtotal": 189.00,
+    "shipping": 0.00,
+    "tax": 15.12,
+    "total": 204.12
+  },
+  {
+    "orderId": "10002",
+    "customerEmail": "liam.carter@example.com",
+    "customerName": "Liam Carter",
+    "status": "shipped",
+    "placedAt": "2026-06-27T14:30:00Z",
+    "shippedAt": "2026-06-28T08:00:00Z",
+    "deliveredAt": null,
+    "cancelledAt": null,
+    "returnedAt": null,
+    "shippingMethod": "express",
+    "shippingAddress": {
+      "line1": "88 Riverside Drive",
+      "city": "Austin",
+      "region": "TX",
+      "postalCode": "78701",
+      "country": "US"
+    },
+    "items": [
+      { "sku": "SKU-PACK-45L", "name": "Vista 45L Backpack", "quantity": 1, "unitPrice": 174.00 },
+      { "sku": "SKU-FLASK-1L", "name": "Insulated Steel Flask 1L", "quantity": 2, "unitPrice": 32.00 }
+    ],
+    "currency": "USD",
+    "subtotal": 238.00,
+    "shipping": 0.00,
+    "tax": 19.04,
+    "total": 257.04
+  },
+  {
+    "orderId": "10003",
+    "customerEmail": "sofia.martinez@example.com",
+    "customerName": "Sofia Martinez",
+    "status": "delivered",
+    "placedAt": "2026-06-20T11:00:00Z",
+    "shippedAt": "2026-06-21T09:30:00Z",
+    "deliveredAt": "2026-06-24T15:00:00Z",
+    "cancelledAt": null,
+    "returnedAt": null,
+    "shippingMethod": "standard",
+    "shippingAddress": {
+      "line1": "302 Birchwood Lane",
+      "city": "Denver",
+      "region": "CO",
+      "postalCode": "80202",
+      "country": "US"
+    },
+    "items": [
+      { "sku": "SKU-BOOT-M9", "name": "Granite Hiking Boots", "quantity": 1, "unitPrice": 159.00 },
+      { "sku": "SKU-GLOVE-WT", "name": "Alpine Wool Gloves", "quantity": 1, "unitPrice": 24.00 }
+    ],
+    "currency": "USD",
+    "subtotal": 183.00,
+    "shipping": 0.00,
+    "tax": 14.64,
+    "total": 197.64
+  },
+  {
+    "orderId": "10004",
+    "customerEmail": "noah.kim@example.com",
+    "customerName": "Noah Kim",
+    "status": "processing",
+    "placedAt": "2026-06-26T16:45:00Z",
+    "shippedAt": null,
+    "deliveredAt": null,
+    "cancelledAt": null,
+    "returnedAt": null,
+    "shippingMethod": "standard",
+    "shippingAddress": {
+      "line1": "5 Cedar Street",
+      "city": "Seattle",
+      "region": "WA",
+      "postalCode": "98101",
+      "country": "US"
+    },
+    "items": [
+      { "sku": "SKU-STOVE-PK", "name": "PocketFlame Backpacking Stove", "quantity": 1, "unitPrice": 54.50 },
+      { "sku": "SKU-MAT-SL", "name": "CloudLayer Sleeping Mat", "quantity": 1, "unitPrice": 89.00 }
+    ],
+    "currency": "USD",
+    "subtotal": 143.50,
+    "shipping": 7.95,
+    "tax": 11.48,
+    "total": 162.93
+  },
+  {
+    "orderId": "10005",
+    "customerEmail": "olivia.brown@example.com",
+    "customerName": "Olivia Brown",
+    "status": "delivered",
+    "placedAt": "2026-05-30T10:00:00Z",
+    "shippedAt": "2026-05-31T12:00:00Z",
+    "deliveredAt": "2026-06-03T14:20:00Z",
+    "cancelledAt": null,
+    "returnedAt": null,
+    "shippingMethod": "standard",
+    "shippingAddress": {
+      "line1": "77 Sunset Boulevard",
+      "city": "San Diego",
+      "region": "CA",
+      "postalCode": "92101",
+      "country": "US"
+    },
+    "items": [
+      { "sku": "SKU-JKT-RN", "name": "StormShield Rain Jacket", "quantity": 1, "unitPrice": 119.00 }
+    ],
+    "currency": "USD",
+    "subtotal": 119.00,
+    "shipping": 7.95,
+    "tax": 9.52,
+    "total": 136.47
+  },
+  {
+    "orderId": "10006",
+    "customerEmail": "james.wilson@example.com",
+    "customerName": "James Wilson",
+    "status": "cancelled",
+    "placedAt": "2026-06-15T13:20:00Z",
+    "shippedAt": null,
+    "deliveredAt": null,
+    "cancelledAt": "2026-06-15T13:50:00Z",
+    "returnedAt": null,
+    "shippingMethod": "standard",
+    "shippingAddress": {
+      "line1": "23 Harbor Way",
+      "city": "Boston",
+      "region": "MA",
+      "postalCode": "02110",
+      "country": "US"
+    },
+    "items": [
+      { "sku": "SKU-CHAIR-FD", "name": "Basecamp Folding Chair", "quantity": 2, "unitPrice": 45.00 }
+    ],
+    "currency": "USD",
+    "subtotal": 90.00,
+    "shipping": 7.95,
+    "tax": 7.20,
+    "total": 105.15
+  },
+  {
+    "orderId": "10007",
+    "customerEmail": "emma.thompson@example.com",
+    "customerName": "Emma Thompson",
+    "status": "delivered",
+    "placedAt": "2026-04-10T09:00:00Z",
+    "shippedAt": "2026-04-11T10:30:00Z",
+    "deliveredAt": "2026-04-15T16:45:00Z",
+    "cancelledAt": null,
+    "returnedAt": null,
+    "shippingMethod": "standard",
+    "shippingAddress": {
+      "line1": "14 Maple Court",
+      "city": "Portland",
+      "region": "OR",
+      "postalCode": "97205",
+      "country": "US"
+    },
+    "items": [
+      { "sku": "SKU-BAG-20F", "name": "TrailRest 20F Sleeping Bag", "quantity": 1, "unitPrice": 129.00 }
+    ],
+    "currency": "USD",
+    "subtotal": 129.00,
+    "shipping": 7.95,
+    "tax": 10.32,
+    "total": 147.27
+  },
+  {
+    "orderId": "10008",
+    "customerEmail": "sofia.martinez@example.com",
+    "customerName": "Sofia Martinez",
+    "status": "shipped",
+    "placedAt": "2026-06-25T18:10:00Z",
+    "shippedAt": "2026-06-27T10:00:00Z",
+    "deliveredAt": null,
+    "cancelledAt": null,
+    "returnedAt": null,
+    "shippingMethod": "express",
+    "shippingAddress": {
+      "line1": "302 Birchwood Lane",
+      "city": "Denver",
+      "region": "CO",
+      "postalCode": "80202",
+      "country": "US"
+    },
+    "items": [
+      { "sku": "SKU-MAT-SL", "name": "CloudLayer Sleeping Mat", "quantity": 1, "unitPrice": 89.00 }
+    ],
+    "currency": "USD",
+    "subtotal": 89.00,
+    "shipping": 7.95,
+    "tax": 7.12,
+    "total": 104.07
+  },
+  {
+    "orderId": "10009",
+    "customerEmail": "noah.kim@example.com",
+    "customerName": "Noah Kim",
+    "status": "delivered",
+    "placedAt": "2026-06-18T08:30:00Z",
+    "shippedAt": "2026-06-19T11:15:00Z",
+    "deliveredAt": "2026-06-22T13:40:00Z",
+    "cancelledAt": null,
+    "returnedAt": null,
+    "shippingMethod": "standard",
+    "shippingAddress": {
+      "line1": "5 Cedar Street",
+      "city": "Seattle",
+      "region": "WA",
+      "postalCode": "98101",
+      "country": "US"
+    },
+    "items": [
+      { "sku": "SKU-FILTER-W", "name": "ClearStream Water Filter", "quantity": 1, "unitPrice": 39.00 },
+      { "sku": "SKU-FLASK-1L", "name": "Insulated Steel Flask 1L", "quantity": 1, "unitPrice": 32.00 }
+    ],
+    "currency": "USD",
+    "subtotal": 71.00,
+    "shipping": 7.95,
+    "tax": 5.68,
+    "total": 84.63
+  },
+  {
+    "orderId": "10010",
+    "customerEmail": "olivia.brown@example.com",
+    "customerName": "Olivia Brown",
+    "status": "processing",
+    "placedAt": "2026-06-28T07:05:00Z",
+    "shippedAt": null,
+    "deliveredAt": null,
+    "cancelledAt": null,
+    "returnedAt": null,
+    "shippingMethod": "express",
+    "shippingAddress": {
+      "line1": "77 Sunset Boulevard",
+      "city": "San Diego",
+      "region": "CA",
+      "postalCode": "92101",
+      "country": "US"
+    },
+    "items": [
+      { "sku": "SKU-PACK-45L", "name": "Vista 45L Backpack", "quantity": 1, "unitPrice": 174.00 }
+    ],
+    "currency": "USD",
+    "subtotal": 174.00,
+    "shipping": 0.00,
+    "tax": 13.92,
+    "total": 187.92
+  },
+  {
+    "orderId": "10011",
+    "customerEmail": "liam.carter@example.com",
+    "customerName": "Liam Carter",
+    "status": "returned",
+    "placedAt": "2026-06-10T12:00:00Z",
+    "shippedAt": "2026-06-11T09:00:00Z",
+    "deliveredAt": "2026-06-14T17:30:00Z",
+    "cancelledAt": null,
+    "returnedAt": "2026-06-20T10:00:00Z",
+    "shippingMethod": "standard",
+    "shippingAddress": {
+      "line1": "88 Riverside Drive",
+      "city": "Austin",
+      "region": "TX",
+      "postalCode": "78701",
+      "country": "US"
+    },
+    "items": [
+      { "sku": "SKU-BOOT-M9", "name": "Granite Hiking Boots", "quantity": 1, "unitPrice": 159.00 }
+    ],
+    "currency": "USD",
+    "subtotal": 159.00,
+    "shipping": 0.00,
+    "tax": 12.72,
+    "total": 171.72
+  },
+  {
+    "orderId": "10012",
+    "customerEmail": "james.wilson@example.com",
+    "customerName": "James Wilson",
+    "status": "delivered",
+    "placedAt": "2026-06-23T15:40:00Z",
+    "shippedAt": "2026-06-25T09:45:00Z",
+    "deliveredAt": "2026-06-27T12:10:00Z",
+    "cancelledAt": null,
+    "returnedAt": null,
+    "shippingMethod": "express",
+    "shippingAddress": {
+      "line1": "23 Harbor Way",
+      "city": "Boston",
+      "region": "MA",
+      "postalCode": "02110",
+      "country": "US"
+    },
+    "items": [
+      { "sku": "SKU-CHAIR-FD", "name": "Basecamp Folding Chair", "quantity": 1, "unitPrice": 45.00 },
+      { "sku": "SKU-GLOVE-WT", "name": "Alpine Wool Gloves", "quantity": 2, "unitPrice": 24.00 }
+    ],
+    "currency": "USD",
+    "subtotal": 93.00,
+    "shipping": 7.95,
+    "tax": 7.44,
+    "total": 108.39
+  }
+]
