@@ -1,0 +1,20 @@
+# Phase 1 Compose file.
+#
+# Builds and runs the Express backend for local development and the Oracle Cloud
+# target environment. Exposes GET /health on port 3000.
+
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+    ports:
+      - "3000:3000"
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3

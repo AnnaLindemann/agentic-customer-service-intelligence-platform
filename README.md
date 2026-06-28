@@ -60,6 +60,7 @@ See [docs/architecture.md](docs/architecture.md) for the processing pipeline.
 | roadmap.md | Implementation phases |
 | engineering-workflow.md | Development workflow |
 | ai-development-workflow.md | Rules for AI Coding Assistants |
+| progress-log.md | Phase-by-phase record of completed work |
 | decisions.md | Architecture Decision Records (ADR) |
 | backlog.md | Future improvements (out of MVP scope) |
 

@@ -1,0 +1,11 @@
+node_modules
+dist
+build
+coverage
+.git
+.env
+.env.*
+*.log
+logs
+data/vector-index
+data/tmp
