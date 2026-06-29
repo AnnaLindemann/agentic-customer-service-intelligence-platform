@@ -8,6 +8,7 @@
 export * from './pii.schema';
 export * from './intent.schema';
 export * from './slots.schema';
+export * from './business-data.schema';
 export * from './retrieval.schema';
 export * from './business-rule.schema';
 export * from './evaluation.schema';

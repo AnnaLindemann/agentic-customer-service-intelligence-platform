@@ -5,6 +5,95 @@ a roadmap phase is implemented and submitted for review.
 
 ---
 
+## Phase 5 — Hybrid Retrieval Layer
+
+**Date:** 2026-06-29
+**Status:** Implemented — awaiting review
+
+### Scope
+
+The **Hybrid Retrieval Layer** as requested: combine **Structured Data Retrieval** (local JSON
+business-data lookup) with the existing **Semantic PDF Retrieval** into one evidence-retrieval
+stage that returns structured business facts, policy evidence with similarity scores, and
+retrieval metadata. This completes the structured half of retrieval that Phase 4 explicitly
+deferred, and packages both paths behind one contract (ADR-002, ADR-009).
+
+The layer **retrieves evidence only**. As instructed, it does **not** implement business rules,
+the decision engine, workflow logic, LLM integration or response generation — those remain
+later, separate stages.
+
+> **Phase numbering:** the request named this "Phase 5 — Hybrid Retrieval Layer".
+> `docs/roadmap.md` places Structured + Semantic retrieval under Phase 4 and names Phase 5
+> "Decision Engine". The deliverables built are the structured + hybrid retrieval described in
+> the request; the roadmap was left unchanged (no roadmap edits without explicit instruction).
+
+### Completed
+
+- **`src/pipeline/retrieval/business-data.ts`** — loads, validates (Zod) and indexes the local
+  `data/business/*.json` datasets into lookup maps (by order id, invoice id, order→invoice, sku,
+  normalized product name, customer email). Process-cached; supports a forced reload / alternate
+  directory for tests. Read-only — no business logic.
+- **`src/pipeline/retrieval/structured-retrieval.ts`** — `retrieveStructuredFacts(slots, opts?)`
+  (sync). Deterministic key lookup resolving `orderId`/`invoiceId`/`productName`/`customerEmail`
+  to citable `StructuredSource` records; pulls an order's invoice as context; de-duplicates by
+  `ref`; records every attempted lookup (found or not) for explainability. Returns raw facts
+  only.
+- **`src/pipeline/retrieval/hybrid-retrieval.ts`** — `retrieveEvidence(input, opts?)` (async).
+  Runs the structured and semantic paths concurrently and returns a schema-validated
+  `HybridRetrieval`: `{ caseId?, query, structuredFacts[], policyEvidence[], metadata }`. An
+  empty `query` skips semantic retrieval (the caller supplies the query; the layer never
+  synthesizes one).
+- **Schemas / types** — new `src/schemas/business-data.schema.ts`
+  (`OrderRecord`/`InvoiceRecord`/`InventoryRecord` contracts); `retrieval.schema.ts` extended
+  with `StructuredLookup`, `RetrievalMetadata` and `HybridRetrieval`. All inferred types added
+  to `src/types`. Barrels updated (`schemas/`, `types/`, `pipeline/retrieval/`).
+- **`src/scripts/check-retrieval.ts`** + `npm run check:retrieval` — runnable smoke check for
+  the stage (mirrors `validate-data`): exits non-zero on any failed assertion.
+- **Docs** — [ADR-009](decisions.md) (hybrid contract + retrieve/decide boundary; notes the
+  schema duplication and phase-numbering); module `README.md` and `src/pipeline/README.md`
+  updated.
+
+### Verification
+
+- `npm run build` compiles cleanly (TypeScript strict).
+- `npm run check:retrieval` passes. Structured lookups resolve as expected (order `10001` →
+  `order:10001` + its invoice `INV-2026-0001`; explicit invoice id; product name match
+  `summit 2-person tent` → `SKU-TENT-2P`; customer email → aggregated facts incl. order
+  `10001`; unknown id `99999` → recorded miss, no source).
+- Hybrid run (`slots {orderId, customerEmail}`, query *"Can I cancel my order placed an hour
+  ago?"*) returns structured facts + 3 policy passages; top match
+  `customer-service-policy.pdf#p1` (score ≈ 0.60); all scores in `[0, 1]`; metadata reports a
+  non-empty index and timings.
+- Empty-query path: `metadata.policy.ran === false`, no policy evidence, structured facts still
+  returned (semantic model not loaded).
+- Output is schema-valid (`HybridRetrievalSchema`).
+
+### Notes
+
+- **Retrieve vs. decide.** The layer surfaces evidence and never judges it (no eligibility, no
+  windows, no sufficiency), keeping business logic in its own later stage (ADR-001).
+- **Mapping to the case.** `structuredFacts` and `policyEvidence` map directly onto the existing
+  `CaseState.structuredSources` / `pdfSources` fields; wiring the stage into a pipeline
+  orchestrator is out of scope here (no orchestrator exists yet — stages are standalone modules).
+
+### Known limitations
+
+- Product matching is exact-normalized name then a *unique* contains match; an ambiguous partial
+  name (multiple matches) intentionally resolves to nothing rather than guessing.
+- Customer facts are derived from `orders.json` only (name + related order/invoice ids); there is
+  no standalone customer dataset in the MVP.
+- `metadata.timings` are wall-clock (not reproducible); they are descriptive only.
+- Minor schema duplication between `business-data.schema.ts` and the `validate-data` script
+  (which keeps its own internal schemas plus cross-record integrity checks). See ADR-009.
+
+### Suggested improvements
+
+- A dedicated customer dataset (and a `customer` lookup beyond order aggregation) if/when CRM
+  data is introduced (backlog: CRM Integration).
+- Optional fuzzy product matching behind a flag, if slot extraction yields noisier product names.
+
+---
+
 ## Phase 4 — Lightweight Semantic PDF RAG
 
 **Date:** 2026-06-29

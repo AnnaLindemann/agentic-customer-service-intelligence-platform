@@ -354,3 +354,71 @@ Trade-off:
 - Interim: TF-IDF vector-space model (lexical cosine over a local index). Rejected because the
   similarity was lexical rather than semantic. Superseded by the local embedding model above;
   the index format was bumped from version 1 (sparse TF-IDF) to version 2 (dense embeddings).
+
+---
+
+# ADR-009
+
+## Title
+
+Hybrid Retrieval Layer — combined evidence contract and retrieval/decision boundary.
+
+## Status
+
+Accepted (implements ADR-002)
+
+## Context
+
+ADR-002 establishes *Hybrid Retrieval*: deterministic JSON lookup plus lightweight semantic
+PDF retrieval. Phase 4 delivered only the semantic half; **Structured Data Retrieval** was
+explicitly deferred. The two paths have different shapes — structured lookup returns exact
+records (no score), semantic retrieval returns passages with a similarity score — and the
+architecture lists them as two adjacent stages. A downstream consumer needs a single,
+predictable evidence contract, and the boundary between *retrieving* evidence and *judging* it
+must stay sharp (ADR-001: "LLMs interpret. Rules decide.").
+
+## Decision
+
+Add a **Hybrid Retrieval Layer** that composes two retrieval paths:
+
+- **Structured Data Retrieval** (`structured-retrieval.ts`) resolves the slot keys `orderId`,
+  `invoiceId`, `productName` and `customerEmail` to raw business records via deterministic
+  lookup maps built over the local JSON data (`business-data.ts`, validated on load). It
+  records every attempted lookup (found or not) for explainability, de-duplicates by `ref`,
+  and returns facts only. A customer "fact" is a factual aggregation of that customer's orders
+  and invoices — no derived judgement.
+- **Hybrid Retrieval Layer** (`hybrid-retrieval.ts`, async) runs both paths (concurrently) and
+  returns one schema-validated bundle, `HybridRetrievalSchema`:
+  `{ caseId?, query, structuredFacts[], policyEvidence[], metadata }`. Similarity scores live
+  on `policyEvidence`; `metadata` carries lookups attempted, policy parameters, index size and
+  timings. The caller supplies the semantic `query` (e.g. the sanitized email); an empty query
+  skips semantic retrieval rather than synthesizing one.
+- The layer **retrieves evidence only**: no sufficiency evaluation, no business rule, no
+  decision. Those remain later, separate stages.
+- The persisted business-data record shapes are formalized as contracts in
+  `src/schemas/business-data.schema.ts` (the shapes were implicit in Phase 3). Cross-record
+  integrity stays in the standalone `validate-data` checker; the retrieval loader validates
+  only that each record is individually well-formed.
+
+## Consequences
+
+Advantages:
+
+- one contract for downstream consumers (`HybridRetrievalSchema`) instead of two;
+- explainable retrieval (per-lookup outcomes; citable refs and scores);
+- the retrieve/decide boundary is explicit, keeping business logic out of retrieval;
+- structured lookups are deterministic, fast (indexed maps) and offline.
+
+Trade-off:
+
+- a small amount of schema duplication between `business-data.schema.ts` and the `validate-data`
+  script (which keeps its own internal schemas plus cross-record checks);
+- `metadata.timings` are wall-clock and therefore not reproducible across runs (they are
+  descriptive only and carry no decision).
+
+## Note on phase numbering
+
+This work was requested as "Phase 5 — Hybrid Retrieval Layer". `docs/roadmap.md` lists
+Structured + Semantic retrieval under Phase 4 and names Phase 5 "Decision Engine". The
+deliverables here are the structured + hybrid retrieval the request described; the roadmap was
+left unchanged per the engineering workflow (no roadmap edits without explicit instruction).

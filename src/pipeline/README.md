@@ -21,3 +21,5 @@ The pipeline order is fixed by the architecture and must not be changed without 
 | Stage | Module | Phase |
 |-------|--------|-------|
 | Semantic PDF Retrieval | [`retrieval/`](retrieval/) | Phase 4 |
+| Structured Data Retrieval | [`retrieval/`](retrieval/) | Phase 5 (Hybrid Retrieval Layer) |
+| Hybrid Retrieval Layer (combines the two retrieval paths) | [`retrieval/`](retrieval/) | Phase 5 |

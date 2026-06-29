@@ -11,7 +11,8 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "validate:data": "tsc && node dist/scripts/validate-data.js",
-    "build:index": "tsc && node dist/scripts/build-pdf-index.js"
+    "build:index": "tsc && node dist/scripts/build-pdf-index.js",
+    "check:retrieval": "tsc && node dist/scripts/check-retrieval.js"
   },
   "dependencies": {
     "@huggingface/transformers": "^4.2.0",

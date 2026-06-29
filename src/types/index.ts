@@ -18,6 +18,12 @@ import type {
   RetrievedSourceSchema,
   PDFRetrievalSchema,
   StructuredSourceSchema,
+  StructuredLookupSchema,
+  RetrievalMetadataSchema,
+  HybridRetrievalSchema,
+  OrderRecordSchema,
+  InvoiceRecordSchema,
+  InventoryRecordSchema,
   BusinessRuleResultSchema,
   EvaluationSummarySchema,
   DecisionSchema,
@@ -46,6 +52,15 @@ export type SlotExtraction = z.infer<typeof SlotExtractionSchema>;
 export type RetrievedSource = z.infer<typeof RetrievedSourceSchema>;
 export type PDFRetrieval = z.infer<typeof PDFRetrievalSchema>;
 export type StructuredSource = z.infer<typeof StructuredSourceSchema>;
+export type StructuredLookup = z.infer<typeof StructuredLookupSchema>;
+export type RetrievalMetadata = z.infer<typeof RetrievalMetadataSchema>;
+/** Combined output of the Hybrid Retrieval Layer (structured facts + policy evidence). */
+export type HybridRetrieval = z.infer<typeof HybridRetrievalSchema>;
+
+// Local business-data record shapes (read by Structured Data Retrieval)
+export type OrderRecord = z.infer<typeof OrderRecordSchema>;
+export type InvoiceRecord = z.infer<typeof InvoiceRecordSchema>;
+export type InventoryRecord = z.infer<typeof InventoryRecordSchema>;
 
 // Decision Engine
 export type BusinessRuleResult = z.infer<typeof BusinessRuleResultSchema>;
