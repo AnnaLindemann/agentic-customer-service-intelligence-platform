@@ -67,7 +67,11 @@ Each stage has one responsibility:
   `HUMAN_ESCALATION`) based on rules, sufficiency and confidence. See *Decision Gate Outcomes* below.
 - **Response Generator** — Uses an LLM to draft a reply grounded only in retrieved evidence.
 - **Compliance Validation** — Deterministically verifies the draft is grounded and safe.
-- **Audit Trace** — Records every stage, decision and reason code.
+- **Audit Trace** — Passively records every stage, decision and reason code, plus per-call LLM
+  metadata (tokens, latency, retries, estimated cost), compliance outcomes and derived evaluation
+  signals. It is observational only: it never changes a decision, workflow, response, compliance
+  result or retry behaviour, and it stores no raw prompt, completion or PII. The output is a
+  provider-neutral, frontend-ready `AuditRecord`. See [decisions.md](decisions.md) (ADR-013).
 - **Structured JSON Output** — Emits the final result: draft or escalation, evidence, decisions, reasons.
 
 ## Decision Gate Outcomes
@@ -140,6 +144,29 @@ and a reason code explaining the escalation.
 > (`AUTO_REPLY`, `ASK_FOR_MORE_INFORMATION`, `HUMAN_ESCALATION`). The other `reasonCode`
 > values shown above are illustrative; the authoritative `ReasonCode` set lives in
 > `src/domain`. See [decisions.md](decisions.md) (ADR-006).
+
+## Audit & Evaluation
+
+The Audit & Evaluation layer (`src/pipeline/audit/`) is **passive**: it observes the outputs of
+stages that already ran and composes one `AuditRecord`. It is on no decision path and changes no
+behaviour. It has three concerns, each isolated:
+
+- **Instrumentation** — `instrumentLlmClient` wraps any `LlmClient` and records per-call metadata
+  (provider, configured/returned model, request id, prompt version, a non-reversible prompt
+  *fingerprint*, tokens, latency, retry count, JSON-validation result, error kind). It forwards
+  the request, result, retries and JSON validation **unchanged**, so the interpretation and
+  response stages need no edits and behaviour is identical with or without it.
+- **Pricing** — a single provider-neutral module holds an in-code price book (USD per 1M tokens)
+  and estimates per-call cost. Models with unknown pricing yield `null`, never an error. Rates are
+  prototype estimates, not authoritative production pricing.
+- **Evaluation metrics** — deterministic *heuristic* signals (hallucination/grounding/PII/
+  escalation risk, overall safety) derived read-only from the recorded metadata. They are
+  indicators for observability, **not** ground truth or a measure of model correctness;
+  authoritative quality measurement is Phase 9 (System Evaluation).
+
+The record stores no raw prompt, completion, PII or slot values (slot *keys* and a prompt
+fingerprint only), and its schema is provider-neutral — a future OpenAI or Anthropic adapter
+populates the same shape unchanged. See [decisions.md](decisions.md) (ADR-013).
 
 ## Supported Workflows
 

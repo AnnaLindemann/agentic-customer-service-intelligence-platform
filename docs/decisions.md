@@ -642,3 +642,76 @@ Trade-off:
 
 This matches the updated `docs/roadmap.md`: Phase 6 is "LLM Integration"; Phase 7 is "Audit &
 Evaluation" (not implemented here).
+
+---
+
+# ADR-013
+
+## Title
+
+Passive Audit & Evaluation layer — boundary instrumentation, provider-neutral cost, and
+heuristic evaluation signals.
+
+## Status
+
+Proposed (Phase 7 — Audit & Evaluation; awaiting review)
+
+## Context
+
+Phase 7's goal is complete transparency for every AI interaction: an explainable execution trace
+carrying prompt/provider/model metadata, token usage, estimated cost, latency, retry count, JSON
+validation result, the decision, compliance outcomes and evaluation metrics. The governing
+constraint is that audit must be **completely passive** — it may never change a decision,
+workflow, response, compliance result or retry behaviour, never block a response when metadata is
+missing, and never store raw prompts, completions or PII. It must be provider-neutral (Groq today;
+OpenAI/Anthropic later) and structured for the Phase 8 workbench. The roadmap also requires a
+pricing abstraction configurable in code rather than hardcoded inside pipeline stages, returning
+`null` for unknown models instead of throwing.
+
+Two facts shaped the design. First, retry count and per-call latency are only knowable *inside*
+the provider adapter. Second, the existing interpretation/response stages already degrade safely
+and must not be disturbed.
+
+## Decision
+
+- Add `src/pipeline/audit/` as a passive, read-only layer with three isolated concerns:
+  - **`llm-recorder.ts`** — `instrumentLlmClient(inner, recorder, { provider })` wraps any
+    `LlmClient` at the provider boundary and appends one `LlmAuditMetadata` per call. It forwards
+    the request verbatim, returns the result verbatim and re-throws errors verbatim; it does not
+    touch prompts, temperature, retry policy, JSON validation or provider behaviour. Because it
+    sits at the port, the interpretation and response stages need **no changes**. Recording is
+    best-effort (errors swallowed) so audit can never block a call.
+  - **`pricing.ts`** — the single home for a provider-neutral, in-code price book (USD per 1M
+    tokens) and `estimateCostUsd`. Unknown model or missing tokens → `null`, never a throw. Rates
+    are documented as prototype estimates, not authoritative production pricing.
+  - **`evaluation-metrics.ts`** — `deriveEvaluationMetrics`, deterministic heuristic signals
+    computed read-only from recorded metadata. They are observability indicators, explicitly
+    **not** ground truth or a measure of model correctness (that is Phase 9).
+  - **`audit-trace.ts`** — `buildAuditTrace`, a pure composition function that assembles the
+    `AuditRecord` from stage outputs. It mutates no input and copies every decision value through
+    unchanged; the output is deep-cloned by `AuditRecordSchema.parse`, so it never aliases
+    pipeline state.
+- Extend the LLM port **additively** for observability only: `LlmJsonResult` and `LlmError` gain
+  an optional `meta` (latency, retry count, provider request id, JSON-validation result) populated
+  by the adapter. This carries no behaviour and existing test doubles may omit it.
+- PII posture: the record stores slot **keys** (never values), a non-reversible prompt
+  **fingerprint** (never prompt text), counts, codes and statuses — no raw email, prompt,
+  completion or personal data. Provider neutrality: `provider` is a free string and the schema has
+  no vendor-specific fields, so a future adapter populates the same shape unchanged.
+
+## Consequences
+
+Advantages:
+
+- a full, explainable, frontend-ready trace per request, captured without altering any stage;
+- retry count and latency are recorded accurately because the adapter — the only place that knows
+  them — reports them as passive metadata;
+- cost policy lives in one provider-neutral module; adding a provider/model is a one-table edit.
+
+Trade-offs:
+
+- the audit layer is a library not yet wired into an end-to-end route; an orchestrator (or the
+  Phase 8 workbench) composes `instrumentLlmClient` + `buildAuditTrace`. This keeps Phase 7
+  strictly observational and avoids introducing a pipeline entry point ahead of its phase;
+- evaluation metrics are intentionally heuristic; they flag risk for review but do not certify
+  correctness.

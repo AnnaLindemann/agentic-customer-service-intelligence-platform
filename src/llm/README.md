@@ -4,7 +4,9 @@ A ports-and-adapters boundary so the pipeline never depends on a vendor SDK.
 
 - **`types.ts`** — the `LlmClient` port (`generateJson(req, schema)`), request/result types and
   `LlmError`. Every LLM call produces JSON validated against a Zod schema; nothing unvalidated
-  crosses this boundary.
+  crosses this boundary. The result and error also carry an optional `meta` (latency, retry count,
+  provider request id, JSON-validation result) — **passive observability only**, consumed by the
+  Phase 7 audit layer; it carries no behaviour and may be omitted by test doubles (ADR-013).
 - **`client.ts`** — `createLlmClient()`: config-driven factory that selects the adapter from
   `LLM_PROVIDER`.
 - **`providers/openai-compatible.ts`** — adapter built on the OpenAI SDK. Serves **Groq** (the

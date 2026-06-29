@@ -31,6 +31,15 @@ import type {
   CaseStateSchema,
   AuditStageRecordSchema,
   AuditTraceSchema,
+  AuditExecutionSchema,
+  LlmAuditMetadataSchema,
+  LlmTotalsSchema,
+  SlotsSummarySchema,
+  BusinessRuleSummarySchema,
+  DecisionAuditMetadataSchema,
+  ComplianceAuditMetadataSchema,
+  EvaluationMetricsSchema,
+  AuditRecordSchema,
   LlmDraftSchema,
   ComplianceCheckSchema,
   ComplianceResultSchema,
@@ -79,9 +88,20 @@ export type DecisionEngineResult = z.infer<typeof DecisionEngineResultSchema>;
 // Case assembly
 export type CaseState = z.infer<typeof CaseStateSchema>;
 
-// Audit
+// Audit (Phase 5/6 lightweight trace)
 export type AuditStageRecord = z.infer<typeof AuditStageRecordSchema>;
 export type AuditTrace = z.infer<typeof AuditTraceSchema>;
+
+// Audit & Evaluation (Phase 7 — passive, frontend-ready)
+export type AuditExecution = z.infer<typeof AuditExecutionSchema>;
+export type LlmAuditMetadata = z.infer<typeof LlmAuditMetadataSchema>;
+export type LlmTotals = z.infer<typeof LlmTotalsSchema>;
+export type SlotsSummary = z.infer<typeof SlotsSummarySchema>;
+export type BusinessRuleSummary = z.infer<typeof BusinessRuleSummarySchema>;
+export type DecisionAuditMetadata = z.infer<typeof DecisionAuditMetadataSchema>;
+export type ComplianceAuditMetadata = z.infer<typeof ComplianceAuditMetadataSchema>;
+export type EvaluationMetrics = z.infer<typeof EvaluationMetricsSchema>;
+export type AuditRecord = z.infer<typeof AuditRecordSchema>;
 
 // Response Generation (Phase 6)
 /** Raw LLM output of the Response Generator, before deterministic validation. */

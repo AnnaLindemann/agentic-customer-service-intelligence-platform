@@ -13,4 +13,6 @@ export {
   type LlmJsonRequest,
   type LlmJsonResult,
   type LlmUsage,
+  type LlmCallMeta,
+  type JsonValidationResult,
 } from './types';

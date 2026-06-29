@@ -17,6 +17,28 @@ export interface LlmUsage {
   outputTokens: number;
 }
 
+/** Outcome of parsing + validating one call's JSON body (Phase 7 audit). */
+export type JsonValidationResult =
+  | 'valid'
+  | 'invalid_json'
+  | 'schema_invalid'
+  | 'transport_error';
+
+/**
+ * Passive observability metadata for a single call (Phase 7 audit). It carries only what the
+ * provider boundary can measure that a caller cannot — never prompt or completion bodies. It
+ * never influences control flow; consumers may ignore it entirely.
+ */
+export interface LlmCallMeta {
+  /** Wall-clock duration of the call, including any internal retry. */
+  latencyMs: number;
+  /** Number of retries the provider performed (0 when the first attempt succeeded). */
+  retryCount: number;
+  /** Provider-assigned request id, when reported (for support/correlation); else null. */
+  providerRequestId: string | null;
+  jsonValidationResult: JsonValidationResult;
+}
+
 /**
  * One JSON generation request. `system`/`user` are the prompt halves. `schemaName` is used
  * only for error context — request and response bodies are never logged (they may contain
@@ -37,6 +59,8 @@ export interface LlmJsonResult<T> {
   /** The model that actually produced the result, as reported by the provider. */
   model: string;
   usage: LlmUsage | null;
+  /** Passive call metadata for the audit layer; optional so test doubles may omit it. */
+  meta?: LlmCallMeta;
 }
 
 /** The port every provider adapter implements. */
@@ -56,12 +80,16 @@ export interface LlmClient {
  * status only) so that prompt bodies and model output never reach logs.
  */
 export class LlmError extends Error {
+  /** Passive call metadata captured before the failure, for the audit layer; may be absent. */
+  readonly meta?: LlmCallMeta;
+
   constructor(
     message: string,
     readonly kind: 'config' | 'transport' | 'invalid_output',
-    options?: { cause?: unknown },
+    options?: { cause?: unknown; meta?: LlmCallMeta },
   ) {
-    super(message, options);
+    super(message, options?.cause !== undefined ? { cause: options.cause } : undefined);
     this.name = 'LlmError';
+    this.meta = options?.meta;
   }
 }

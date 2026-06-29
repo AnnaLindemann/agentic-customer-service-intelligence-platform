@@ -29,6 +29,8 @@ export interface OpenAiCompatibleConfig {
 }
 
 interface CompletionResponse {
+  /** Provider-assigned request id, surfaced as passive audit metadata when present. */
+  id?: string;
   choices: Array<{ message?: { content?: string | null } }>;
   model?: string;
   usage?: { prompt_tokens?: number; completion_tokens?: number } | null;
@@ -89,8 +91,11 @@ export function createOpenAiCompatibleClient(cfg: OpenAiCompatibleConfig): LlmCl
       // invalid/schema-invalid JSON body. Transport errors propagate immediately.
       const maxAttempts = 2;
       let lastReason = 'unknown';
+      // Passive audit timing/attempt tracking (Phase 7); never affects control flow.
+      const startedAt = Date.now();
+      let attempt = 0;
 
-      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      for (attempt = 1; attempt <= maxAttempts; attempt++) {
         let completion;
         try {
           completion = await completionCreate({
@@ -105,7 +110,15 @@ export function createOpenAiCompatibleClient(cfg: OpenAiCompatibleConfig): LlmCl
           throw new LlmError(
             `${cfg.providerLabel} request failed for ${req.schemaName}.`,
             'transport',
-            { cause },
+            {
+              cause,
+              meta: {
+                latencyMs: Date.now() - startedAt,
+                retryCount: attempt - 1,
+                providerRequestId: null,
+                jsonValidationResult: 'transport_error',
+              },
+            },
           );
         }
 
@@ -120,7 +133,17 @@ export function createOpenAiCompatibleClient(cfg: OpenAiCompatibleConfig): LlmCl
                   outputTokens: completion.usage.completion_tokens ?? 0,
                 }
               : null;
-            return { data: validated.data, model: completion.model ?? cfg.model, usage };
+            return {
+              data: validated.data,
+              model: completion.model ?? cfg.model,
+              usage,
+              meta: {
+                latencyMs: Date.now() - startedAt,
+                retryCount: attempt - 1,
+                providerRequestId: completion.id ?? null,
+                jsonValidationResult: 'valid',
+              },
+            };
           }
           lastReason = 'schema-invalid';
         } else {
@@ -133,6 +156,16 @@ export function createOpenAiCompatibleClient(cfg: OpenAiCompatibleConfig): LlmCl
       throw new LlmError(
         `${cfg.providerLabel} returned ${lastReason} output for ${req.schemaName} after ${maxAttempts} attempts.`,
         'invalid_output',
+        {
+          meta: {
+            // Reached only after every attempt ran, so all but the first were retries.
+            latencyMs: Date.now() - startedAt,
+            retryCount: maxAttempts - 1,
+            providerRequestId: null,
+            jsonValidationResult:
+              lastReason === 'unparseable-json' ? 'invalid_json' : 'schema_invalid',
+          },
+        },
       );
     },
   };
