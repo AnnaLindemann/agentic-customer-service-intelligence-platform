@@ -30,6 +30,7 @@ Thumbs.db
 
 # Data generated locally
 data/vector-index/
+data/models/
 data/tmp/
 
 # AI assistant local files

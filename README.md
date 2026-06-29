@@ -85,8 +85,10 @@ See [docs/engineering-workflow.md](docs/engineering-workflow.md) and
 **Validation:** Zod (all LLM outputs are schema-validated)
 **AI:** External LLM API, structured JSON output, prompt versioning
 **Retrieval:** Local JSON business data; lightweight semantic PDF RAG over a local JSON
-vector index with cosine similarity (embeddings via external API)
-**PDF Processing:** pdf-parse
+vector index with cosine similarity, using a small local sentence-embedding model
+(`@huggingface/transformers`, MiniLM) — no external embedding API or vector database
+(see [ADR-008](docs/decisions.md))
+**PDF Processing:** dependency-free reader for the generated policy PDFs
 **Infrastructure:** Docker, Docker Compose, Oracle Cloud Always Free
 **Observability:** Audit trace, reason codes, prompt/version metadata, decision path logging
 

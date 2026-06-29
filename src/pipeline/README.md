@@ -15,3 +15,9 @@ Structured JSON Output
 ```
 
 The pipeline order is fixed by the architecture and must not be changed without an ADR.
+
+## Implemented stages
+
+| Stage | Module | Phase |
+|-------|--------|-------|
+| Semantic PDF Retrieval | [`retrieval/`](retrieval/) | Phase 4 |

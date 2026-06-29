@@ -5,6 +5,89 @@ a roadmap phase is implemented and submitted for review.
 
 ---
 
+## Phase 4 — Lightweight Semantic PDF RAG
+
+**Date:** 2026-06-29
+**Status:** Implemented — awaiting review
+
+### Scope
+
+The **Semantic PDF Retrieval** stage of the roadmap's Phase 4 (Retrieval): retrieving
+relevant company-policy passages from the local PDFs via cosine similarity over a local
+vector index. This is the deliverable the request named ("Lightweight Semantic PDF RAG").
+
+The other half of roadmap Phase 4 — **Structured Data Retrieval** (JSON business-data
+lookup) — is intentionally **not** implemented here; it was outside the named scope. No
+later-phase functionality (Decision Engine, Response Generator, etc.) is included.
+
+Retrieval uses a **local sentence-embedding model** for genuine semantic similarity. An
+interim TF-IDF implementation was built first and then **rejected** during review because its
+similarity was lexical, not semantic (see ADR-008 History).
+
+### Completed
+
+- **`src/pipeline/retrieval/`** — the retrieval stage, one responsibility per module:
+  - `pdf-text.ts` — dependency-free extraction of ordered page text from the generated
+    policy PDFs (parses the uncompressed content streams; marks heading lines).
+  - `chunking.ts` — groups page text into heading-delimited, citable passages
+    (`<slug>.pdf#p<n>`).
+  - `embeddings.ts` — embeds text with a local MiniLM model (`Xenova/all-MiniLM-L6-v2`,
+    384-dim) via `@huggingface/transformers`, plus dense cosine similarity. No external API.
+  - `policy-index.ts` — builds, persists and loads the local vector index (dense embeddings)
+    under `data/vector-index/` (git-ignored); validates the file on load with Zod; rebuilds on
+    a model/version mismatch.
+  - `semantic-pdf-retrieval.ts` — `retrievePolicyPassages(query, options?)` (async),
+    returning a `PDFRetrieval` validated against the Phase 2 `PDFRetrievalSchema`.
+  - `index.ts`, `README.md`.
+- **`src/scripts/build-pdf-index.ts`** + `npm run build:index` — explicit index build.
+- **Dependency** — `@huggingface/transformers` (local ONNX inference). Model weights cached
+  under `data/models/` (git-ignored).
+- **Docs** — [ADR-008](decisions.md) (local embeddings; records why TF-IDF was rejected);
+  module README; `data/README.md` and root `README.md` updated.
+
+### Verification
+
+- `npm run build` compiles cleanly (TypeScript strict).
+- `npm run build:index` builds the index: model `Xenova/all-MiniLM-L6-v2` (384-dim),
+  3 documents, 39 passages.
+- Retrieval smoke test over representative queries returns the correct policy and page:
+  cancellation → `customer-service-policy.pdf#p1` (cancellation eligibility);
+  damaged item → damaged-product/refund sections; invoice question →
+  `billing-policy.pdf#p2` (answering invoice questions); availability →
+  `product-availability-policy.pdf` availability sections.
+- **Semantic check:** the paraphrase *"how do I call off my purchase?"* (no shared vocabulary
+  with "cancel") retrieves the **Order Cancellations** section — which the lexical TF-IDF
+  model could not.
+- An off-topic/gibberish query returns **no sources** (the "no grounding policy" path).
+- Output is schema-valid; scores lie in `[0, 1]`.
+
+### Notes
+
+- **Local, not external.** Embeddings run locally via ONNX (no external embedding API, no
+  external vector database). Model weights are fetched once and cached, then run offline.
+  Embedding from fixed weights is deterministic, consistent with the stage's classification.
+- **README reconciled.** The root README's planned stack had named embeddings via an external
+  API and `pdf-parse`; the implementation keeps embeddings **local** and uses a dependency-free
+  PDF reader. The README line was updated and ADR-008 records the rationale.
+
+### Known limitations
+
+- Similarity quality is bounded by a small model on short, heading-sized passages; some
+  paraphrases rank a related-but-not-best section first. The `minScore` threshold (default
+  0.25) keeps off-topic queries from matching.
+- Adds the `@huggingface/transformers` dependency and a one-time model download (cached
+  locally); `retrievePolicyPassages` is now async.
+- The PDF reader parses only the uncompressed PDFs this project generates, not arbitrary PDFs.
+- Passages are cited by the page on which their heading starts; a section spanning a page
+  break cites its start page.
+
+### Suggested improvements
+
+- Optional larger/instruction-tuned local embedding model behind the same interface.
+- Sub-section splitting and overlap windows if policies grow; drop heading-only chunks.
+
+---
+
 ## Phase 2 — Domain Model & Validation Contracts
 
 **Date:** 2026-06-28

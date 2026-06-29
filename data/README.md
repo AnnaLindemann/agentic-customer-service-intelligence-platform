@@ -7,7 +7,7 @@ no external vector database).
 |-----------------|----------|---------------|
 | `business/`     | Local JSON business data (orders, invoices, inventory) | Phase 3 (Knowledge Sources) |
 | `pdfs/`         | Company policy PDFs — the knowledge sources for semantic retrieval | Phase 3 (Knowledge Sources) |
-| `vector-index/` | Generated local vector index (git-ignored) | Phase 4 (Retrieval) |
+| `vector-index/` | Generated local vector index for semantic PDF retrieval (git-ignored); build with `npm run build:index` | Phase 4 (Retrieval) |
 
 The editable Markdown source for the policy PDFs lives in
 [`docs/policies/`](../docs/policies/), not under `data/`.
@@ -31,9 +31,11 @@ arithmetic, status coherence).
 
 `Customer Service Policy.pdf`, `Billing Policy.pdf`, and `Product Availability Policy.pdf`
 cover the four supported workflows (cancellation, damaged item, invoice question,
-product availability). They are the PDF knowledge sources that Phase 4's semantic
-retrieval pipeline (PDF → text extraction → chunking → embeddings → local vector index)
-will consume.
+product availability). They are the PDF knowledge sources consumed by Phase 4's semantic
+retrieval pipeline (PDF → text extraction → chunking → local embeddings → local vector index).
+Embeddings are produced by a local MiniLM model; the model weights are cached under
+`data/models/` (git-ignored). See [`src/pipeline/retrieval/`](../src/pipeline/retrieval/) and
+[ADR-008](../docs/decisions.md).
 
 The PDFs are generated from the Markdown source in [`docs/policies/`](../docs/policies/),
 which remains the editable source of truth. To regenerate them after editing the

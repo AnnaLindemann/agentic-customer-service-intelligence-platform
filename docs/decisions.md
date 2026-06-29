@@ -280,3 +280,77 @@ Advantages:
 Trade-off:
 
 - the system requires stronger deterministic validation before automatic replies.
+
+---
+
+# ADR-008
+
+## Title
+
+Local sentence-embedding model for Semantic PDF Retrieval (TF-IDF rejected).
+
+## Status
+
+Accepted (supersedes an interim TF-IDF implementation — see History)
+
+## Context
+
+`docs/architecture.md` lists Semantic PDF Retrieval as a *deterministic* stage —
+"cosine similarity over a local index" — and the MVP constraints forbid an external vector
+database. The supporting docs (`data/README.md`, the PDF-generator docstring, the root
+`README.md` planned stack) describe the stage as **embedding**-based semantic retrieval.
+Two implementation choices follow: how to turn policy text into vectors, and how to read the
+policy PDFs.
+
+An external embeddings API was considered and rejected: it would add a network dependency,
+cost, and a non-deterministic external call, conflicting with the stage's deterministic
+classification and the "prefer deterministic" principle.
+
+A first implementation used a **TF-IDF vector-space model**. It was deterministic and
+dependency-free, but its similarity is **lexical**: it matches only on shared terms, so a
+paraphrase such as "call off my purchase" does not match the *cancellation* policy because it
+shares no vocabulary with it. That under-delivers on the word *semantic*. TF-IDF was therefore
+rejected in favour of true embeddings, with the requirement that they remain **local**.
+
+## Decision
+
+Implement Semantic PDF Retrieval with a **local sentence-embedding model** and cosine
+similarity over a **local, file-based index** (`data/vector-index/policy-index.json`):
+
+- passages and queries are embedded with `Xenova/all-MiniLM-L6-v2` (384-dim) run **locally**
+  via `@huggingface/transformers` (ONNX Runtime, CPU). The model weights are fetched once and
+  cached under `data/models/` (git-ignored); after that, embedding is fully offline;
+- dense, L2-normalized embeddings are stored in the local index; a query is embedded the same
+  way and scored against every passage by cosine similarity;
+- the policy PDFs are read by a small, dependency-free parser that understands the
+  uncompressed PDFs produced by `scripts/generate-policy-pdfs.py`, rather than adding a
+  third-party PDF library.
+
+There is **no external embedding API** (at build or query time) and **no external vector
+database**: ADR-003 and the MVP constraints hold. Embedding generation from fixed model
+weights is deterministic, so the stage's deterministic classification also holds.
+
+## Consequences
+
+Advantages:
+
+- genuine **semantic** matching — paraphrases with no shared vocabulary are retrieved;
+- still local, offline (after the one-time model download) and reproducible — no API keys,
+  per-call cost, or runtime network;
+- explainable: every hit is a verbatim, citable policy passage.
+
+Trade-off:
+
+- adds the `@huggingface/transformers` dependency and its ONNX runtime, and a one-time model
+  download (~tens of MB, cached). This is heavier than the stdlib-only retrieval but stays
+  within the local/offline constraints and is comfortable for the Oracle Always Free target;
+- the retrieval stage (`retrievePolicyPassages`) is now **async** (the model loads and runs
+  asynchronously);
+- the custom PDF reader is intentionally narrow: it parses only the PDFs this project
+  generates, not arbitrary PDFs.
+
+## History
+
+- Interim: TF-IDF vector-space model (lexical cosine over a local index). Rejected because the
+  similarity was lexical rather than semantic. Superseded by the local embedding model above;
+  the index format was bumped from version 1 (sparse TF-IDF) to version 2 (dense embeddings).
