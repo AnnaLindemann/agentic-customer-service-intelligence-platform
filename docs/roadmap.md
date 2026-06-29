@@ -41,14 +41,14 @@ Status: DONE
 - Slot Extraction
 - Workflow Enrichment
 - Case State Builder
-
+Status: DONE
 ---
 
 # Phase 4 — Retrieval
 
 - Structured Data Retrieval
 - Semantic PDF Retrieval
-
+Status: DONE
 ---
 
 # Phase 5 — Decision Engine
