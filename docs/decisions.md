@@ -244,3 +244,39 @@ Advantages:
 Trade-off:
 
 - documentation examples must track the enum definitions when they change.
+
+---
+
+# ADR-007
+
+## Title
+
+Human by Exception
+
+## Status
+
+Accepted
+
+## Context
+
+The employer's goal is maximum safe automation.
+
+## Decision
+
+Supported low-risk customer service requests should result in `AUTO_REPLY` whenever
+deterministic validation succeeds.
+
+Human escalation is used only for unsupported, ambiguous, risky or policy-conflicting
+requests.
+
+## Consequences
+
+Advantages:
+
+- higher automation
+- lower operating cost
+- better alignment with the project goals
+
+Trade-off:
+
+- the system requires stronger deterministic validation before automatic replies.

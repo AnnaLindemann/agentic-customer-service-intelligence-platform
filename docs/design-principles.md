@@ -39,6 +39,7 @@ It is acceptable to produce no draft; it is not acceptable to produce an unsafe 
 
 Escalating to a human when confidence, data sufficiency or compliance checks fail is a
 designed, successful path — not a failure. The system is an assistant, not an autonomous actor.
+This does not make escalation the default path: see Principle 10 (*Human by Exception*).
 
 ## 8. Simplicity over unnecessary infrastructure.
 
@@ -46,6 +47,21 @@ The MVP uses the lightest infrastructure that satisfies the task: local JSON dat
 a local vector index, and local PDFs. Heavy infrastructure is added only when justified.
 
 ## 9. Prefer deterministic solutions unless AI provides measurable value.
+
+## 10. Human by Exception.
+
+The system should automatically process supported low-risk customer service requests.
+
+Human escalation is reserved for:
+
+- unsupported workflows
+- ambiguous intent
+- insufficient data
+- policy conflicts
+- legal or high-risk requests
+- failed compliance validation
+
+Human review is the exception, not the default.
 
 ---
 

@@ -6,6 +6,10 @@ pipeline and produces a **grounded draft response** with a full **audit trace**.
 The project is designed as a production-oriented AI system rather than a chatbot demo.
 It uses a hybrid architecture: LLMs handle language, deterministic rules handle decisions.
 
+The system aims to automate supported customer service emails while escalating only cases
+that are unsafe, unsupported or insufficiently grounded. Supported low-risk requests are
+processed automatically; human review is reserved for exceptions.
+
 > **LLMs interpret. Rules decide.**
 
 See [docs/design-principles.md](docs/design-principles.md) for the full engineering philosophy.
@@ -46,6 +50,7 @@ The project follows the principles in [docs/design-principles.md](docs/design-pr
 - Agent responsibilities do not require LLM agents.
 - Every decision is explainable and grounded in evidence.
 - Safety is more important than automation; human escalation is a successful outcome.
+- Human by exception: supported low-risk requests are auto-replied; escalation is the fallback.
 
 See [docs/architecture.md](docs/architecture.md) for the processing pipeline.
 
@@ -106,6 +111,6 @@ The following are deferred to the backlog and are **not** part of the MVP:
 
 - Conversation Intelligence
 - Business Insights Extraction
-- Human review interface and evaluation dashboard
+- Escalation review interface and evaluation dashboard
 
 See [docs/backlog.md](docs/backlog.md).

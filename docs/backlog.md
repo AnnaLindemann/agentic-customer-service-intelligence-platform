@@ -8,9 +8,13 @@ Items in this backlog must not be implemented before the MVP is completed.
 
 # High Priority
 
-## Human Review Interface
+## Escalation Review Interface
 
-Allow a support agent to:
+Human review applies only to escalated cases — those the Decision Gate routes to
+`HUMAN_ESCALATION`. Automatically processed (`AUTO_REPLY`) cases do not pass through this
+interface.
+
+For an escalated case, allow a support agent to:
 
 - review the generated response;
 - inspect retrieved evidence;

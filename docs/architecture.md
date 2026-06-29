@@ -63,11 +63,40 @@ Each stage has one responsibility:
 - **Semantic PDF Retrieval** — Retrieves relevant policy passages from PDFs via cosine similarity.
 - **Data Sufficiency Evaluation** — Checks whether enough evidence exists to answer safely.
 - **Business Rule Engine** — Applies company rules deterministically to the case.
-- **Decision Gate** — Decides to draft a reply or escalate, based on rules, sufficiency and confidence.
+- **Decision Gate** — Returns exactly one outcome (`AUTO_REPLY`, `ASK_FOR_MORE_INFORMATION`,
+  `HUMAN_ESCALATION`) based on rules, sufficiency and confidence. See *Decision Gate Outcomes* below.
 - **Response Generator** — Uses an LLM to draft a reply grounded only in retrieved evidence.
 - **Compliance Validation** — Deterministically verifies the draft is grounded and safe.
 - **Audit Trace** — Records every stage, decision and reason code.
 - **Structured JSON Output** — Emits the final result: draft or escalation, evidence, decisions, reasons.
+
+## Decision Gate Outcomes
+
+The Decision Gate returns exactly one of three outcomes:
+
+- `AUTO_REPLY`
+- `ASK_FOR_MORE_INFORMATION`
+- `HUMAN_ESCALATION`
+
+`AUTO_REPLY` is the preferred outcome whenever deterministic validation succeeds and
+sufficient evidence exists. The system is built for maximum safe automation, so supported
+low-risk requests should be answered automatically.
+
+`HUMAN_ESCALATION` is a safety fallback rather than the normal processing path. It is used
+only when automation would be unsafe or impossible. See
+[design-principles.md](design-principles.md) (*Human by Exception*).
+
+## Escalation Triggers
+
+The Decision Gate escalates to a human when one or more of the following conditions hold:
+
+- legal threats
+- unsupported workflows
+- ambiguous intent
+- insufficient evidence
+- policy conflicts
+- failed compliance validation
+- sensitive payment or personal data that cannot be safely minimized
 
 ## Worked Example
 
