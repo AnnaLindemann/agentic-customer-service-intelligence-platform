@@ -16,4 +16,5 @@ export * from './decision.schema';
 export * from './decision-engine.schema';
 export * from './case-state.schema';
 export * from './audit.schema';
+export * from './response.schema';
 export * from './final-response.schema';

@@ -11,6 +11,7 @@
  * Every attempted lookup is recorded (found or not) so the step is explainable.
  */
 import { StructuredSourceSchema } from '../../schemas';
+import { createHash } from 'node:crypto';
 import type { ExtractedSlots, StructuredLookup, StructuredSource } from '../../types';
 import {
   loadBusinessData,
@@ -41,6 +42,12 @@ interface CustomerFacts extends Record<string, unknown> {
   customerName: string | null;
   orderIds: string[];
   invoiceIds: string[];
+}
+
+/** Stable pseudonymous reference; raw customer e-mail addresses must never become evidence refs. */
+function customerRef(email: string): string {
+  const digest = createHash('sha256').update(email.trim().toLowerCase()).digest('hex').slice(0, 16);
+  return `customer:${digest}`;
 }
 
 /**
@@ -111,8 +118,9 @@ export function retrieveStructuredFacts(
   // --- customer (by email) ---
   if (customerEmail) {
     const facts = buildCustomerFacts(data, customerEmail);
-    lookups.push({ kind: 'customer', key: customerEmail, found: Boolean(facts), ref: facts && `customer:${facts.customerEmail}` });
-    if (facts) add('customer', `customer:${facts.customerEmail}`, facts);
+    const ref = facts ? customerRef(facts.customerEmail) : undefined;
+    lookups.push({ kind: 'customer', key: customerEmail, found: Boolean(facts), ref });
+    if (facts && ref) add('customer', ref, facts);
   }
 
   return { sources, lookups };

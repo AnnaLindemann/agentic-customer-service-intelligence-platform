@@ -31,6 +31,11 @@ import type {
   CaseStateSchema,
   AuditStageRecordSchema,
   AuditTraceSchema,
+  LlmDraftSchema,
+  ComplianceCheckSchema,
+  ComplianceResultSchema,
+  CitedEvidenceSchema,
+  GeneratedResponseSchema,
   FinalApiResponseSchema,
 } from '../schemas';
 
@@ -77,6 +82,15 @@ export type CaseState = z.infer<typeof CaseStateSchema>;
 // Audit
 export type AuditStageRecord = z.infer<typeof AuditStageRecordSchema>;
 export type AuditTrace = z.infer<typeof AuditTraceSchema>;
+
+// Response Generation (Phase 6)
+/** Raw LLM output of the Response Generator, before deterministic validation. */
+export type LlmDraft = z.infer<typeof LlmDraftSchema>;
+export type ComplianceCheck = z.infer<typeof ComplianceCheckSchema>;
+export type ComplianceResult = z.infer<typeof ComplianceResultSchema>;
+export type CitedEvidence = z.infer<typeof CitedEvidenceSchema>;
+/** Structured JSON Output of Phase 6 (draft + cited evidence + compliance + echoed decision). */
+export type GeneratedResponse = z.infer<typeof GeneratedResponseSchema>;
 
 // Final output
 export type FinalApiResponse = z.infer<typeof FinalApiResponseSchema>;

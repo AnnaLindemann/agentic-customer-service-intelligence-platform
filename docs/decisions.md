@@ -487,3 +487,158 @@ Trade-off:
 
 This matches `docs/roadmap.md`: Phase 5 is "Decision Engine". (The earlier "Phase 5 — Hybrid
 Retrieval Layer" request in ADR-009 corresponded to the roadmap's Phase 4 retrieval work.)
+
+---
+
+# ADR-011
+
+## Title
+
+Response Generation — provider-neutral LLM layer, German grounded drafts, deterministic
+compliance gate.
+
+## Status
+
+Proposed (Phase 6 — Response Generation; awaiting review)
+
+## Context
+
+Phase 6 implements the first real LLM call in the system: **Response Generator**, **Compliance
+Validation** and the phase's **Structured JSON Output** (`docs/architecture.md`). Until now no
+LLM provider, client or SDK existed in the codebase. Several constraints had to be reconciled:
+
+1. ADR-001/ADR-005 keep business decisions deterministic — the LLM may only *write text*, never
+   decide. The Decision Gate (Phase 5) has already committed to one outcome before this phase runs.
+2. ADR-004 forbids raw PII reaching an LLM. The masked email satisfies this, but **structured
+   business facts** retrieved in Phase 5 also contain customer PII (name, e-mail, address,
+   payment method), which would otherwise enter the prompt.
+3. The phase's "Structured JSON Output" must not depend on the **Audit** trace, which is Phase 7
+   and explicitly out of scope. `FinalApiResponseSchema` mandates an `audit` field, so it cannot
+   be the Phase 6 output.
+4. The owner requires a provider-neutral LLM abstraction with Groq (`openai/gpt-oss-120b`
+   default, `openai/gpt-oss-20b` dev fallback) accessed via the OpenAI SDK, all output as
+   Zod-validated JSON, one retry on invalid JSON, and no logging of prompt bodies.
+
+## Decision
+
+- **LLM layer (`src/llm/`)** — a ports-and-adapters boundary. The pipeline depends only on the
+  `LlmClient` port (`generateJson(req, schema)`); the single adapter
+  (`providers/openai-compatible.ts`) uses the OpenAI SDK pointed at Groq's base URL. Because
+  Groq is OpenAI-compatible, the same adapter also serves OpenAI by changing base URL/key/model;
+  Anthropic would be a new adapter file implementing the same port, with **no pipeline change**.
+  Provider/model/keys come from config (`src/config/env.ts`); `GROQ_API_KEY` is optional at
+  parse time so non-LLM builds work, and the factory throws a clear error if it is missing when a
+  call is attempted. The adapter retries exactly once on invalid/schema-invalid JSON, does not
+  retry transport errors, and never logs prompt or completion bodies.
+- **Default model `openai/gpt-oss-120b`** via Groq for quality at negligible prototype cost
+  (≈ $0.15 in / $0.60 out per 1M tokens, ~500 TPS as of June 2026), with `openai/gpt-oss-20b`
+  as the cheaper dev fallback (set `LLM_MODEL` to it locally).
+- **Response Generator (`src/pipeline/response/`)** — consumes the *decided* case and writes a
+  **German** customer-facing draft grounded only in the masked email, the (PII-redacted)
+  structured facts and the policy passages. It echoes the Decision Gate result unchanged. For
+  `HUMAN_ESCALATION` it makes **no LLM call** and returns no draft. Structured facts are
+  deterministically reduced to per-kind **PII-safe whitelists**, and evidence references are
+  replaced with non-identifying aliases before entering the prompt.
+- **Compliance Validation** — deterministic. It requires cited references to exist, rejects
+  unsupported promises unless an `AUTO_REPLY` has relevant cited evidence or passed-rule support,
+  checks German language and raw-PII leakage, and confirms the draft matches the decision. On any
+  failure the safe fallback is **no draft**
+  (human handling); it never edits the draft or changes the decision.
+- **Structured JSON Output** — a new contract `GeneratedResponseSchema`
+  (`{ caseId?, language:'de', decision, draft|null, delivered, citedEvidence[], compliance }`).
+  It deliberately excludes the audit trace; assembling `FinalApiResponse` (with audit) is Phase 7.
+- No new `ReasonCode` was added; existing `ESCALATION_REQUIRED` / `INVALID_LLM_OUTPUT` cover the
+  safety-fallback paths.
+
+## Consequences
+
+Advantages:
+
+- the LLM is confined to language generation; the decision stays deterministic and unchanged;
+- provider is swappable by config (OpenAI) or one adapter file (Anthropic), with zero pipeline edits;
+- defence in depth on PII: masked email **and** redacted facts, plus a deterministic leak check;
+- every LLM output is Zod-validated with a single retry; failures degrade safely to human handling.
+
+Trade-off:
+
+- adds the `openai` dependency (used only inside `src/llm`);
+- some compliance checks are heuristic (German-language markers, promissory terms and PII patterns) and
+  may need tuning; they are intentionally conservative (fail towards escalation);
+- automatic cross-model failover to the dev fallback is **not** implemented — model selection is
+  config-driven only; this can be added later behind the same port.
+
+## Note on phase numbering
+
+ADR-011 was written when Phase 6 was "Response Generation". The roadmap was subsequently
+restructured so Phase 6 is **"LLM Integration"** — it now covers the Response Generator *and*
+the LLM interpretation stages (see ADR-012). Audit & Evaluation moved to Phase 7, and remains
+out of scope here.
+
+---
+
+# ADR-012
+
+## Title
+
+LLM interpretation stages — Intent Classification, Top-N Ranking and Slot Extraction on the
+shared LLM layer.
+
+## Status
+
+Proposed (Phase 6 — LLM Integration; awaiting review)
+
+## Context
+
+The roadmap's Phase 6 was widened from "Response Generation" to **"LLM Integration"**: besides
+the Response Generator (ADR-011), the language-understanding stages — Intent Classification,
+Top-N Intent Ranking and Slot Extraction — must become real LLM calls. The architecture has
+always listed these as LLM stages, but no implementation existed (Phase 3's deterministic
+stages, including the PII Sanitizer, Scope Validation and Workflow Enrichment, are also not yet
+implemented). Constraints: reuse the provider-neutral `LlmClient` (ADR-011), no vendor SDK
+outside `src/llm`, structured JSON validated with Zod, one retry on invalid JSON, no raw PII,
+no prompt-body logging, and — critically — no bypassing of the deterministic stages.
+
+## Decision
+
+- Add `src/pipeline/interpretation/` (named after ADR-001, "LLMs interpret"), symmetric with
+  `response/`:
+  - `intent-classification.ts` — `classifyIntent()` returns `IntentClassificationSchema`
+    (intent + confidence + ranked candidates: Intent Classification and Top-N Ranking are one
+    call).
+  - `slot-extraction.ts` — `extractSlots()` returns `SlotExtractionSchema`.
+  - `prompts.ts` — versioned templates (`INTENT_PROMPT_VERSION`, `SLOT_PROMPT_VERSION`) and pure
+    builders. The prompt version is carried on each stage's outcome for Phase 7 audit.
+- Both stages depend only on `LlmClient` (injectable for tests), use JSON mode, validate with
+  Zod, inherit the single invalid-JSON retry from the LLM layer, run at temperature 0, and never
+  log prompt or output bodies. They operate on the **PII-masked** email only (ADR-004) and
+  preserve masked placeholders verbatim; reconciling tokens with real records stays deterministic
+  and is out of scope.
+- **Fail-safe via existing deterministic logic, not new logic:** an LLM failure or invalid output
+  collapses Intent Classification to `unknown` (the Decision Gate already routes `unknown` to
+  HUMAN_ESCALATION) and Slot Extraction to empty slots with every requested field marked missing
+  (Data Sufficiency / Decision Gate then ask for information or escalate). A `fallback` flag on
+  the outcome records that this happened.
+- The stages **interpret only**: they do not perform Scope Validation or Workflow Enrichment and
+  make no business decision. Those deterministic stages remain unimplemented and unbypassed.
+
+## Consequences
+
+Advantages:
+
+- the full set of LLM stages now runs through one provider-neutral, Zod-validated, retrying layer;
+- prompt versioning makes outputs traceable ahead of Phase 7 audit;
+- failures degrade safely through the *existing* deterministic escalation paths — no new decision
+  logic, nothing bypassed.
+
+Trade-off:
+
+- a small per-stage outcome wrapper (`{ data, promptVersion, fallback }`) is added rather than
+  changing the canonical schemas, since prompt/run metadata belongs to Phase 7;
+- the deterministic Phase 3 stages were repaired alongside the Phase 6 safety review. The modules
+  are now composable, but an end-to-end customer-email API route remains intentionally
+  unimplemented.
+
+## Note on phase numbering
+
+This matches the updated `docs/roadmap.md`: Phase 6 is "LLM Integration"; Phase 7 is "Audit &
+Evaluation" (not implemented here).
