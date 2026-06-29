@@ -71,6 +71,10 @@ export const ReasonCode = {
   POLICY_MISSING: 'POLICY_MISSING',
   /** Expected structured business data was not found. */
   STRUCTURED_DATA_MISSING: 'STRUCTURED_DATA_MISSING',
+  /** Enough structured and policy evidence exists to answer the case safely. */
+  DATA_SUFFICIENT: 'DATA_SUFFICIENT',
+  /** A deterministic business rule was satisfied. */
+  RULE_PASSED: 'RULE_PASSED',
   /** Business rules produced a conflicting or disallowed result. */
   BUSINESS_RULE_CONFLICT: 'BUSINESS_RULE_CONFLICT',
   /** An LLM stage returned output that failed schema validation. */

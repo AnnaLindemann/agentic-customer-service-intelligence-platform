@@ -422,3 +422,68 @@ This work was requested as "Phase 5 — Hybrid Retrieval Layer". `docs/roadmap.m
 Structured + Semantic retrieval under Phase 4 and names Phase 5 "Decision Engine". The
 deliverables here are the structured + hybrid retrieval the request described; the roadmap was
 left unchanged per the engineering workflow (no roadmap edits without explicit instruction).
+
+---
+
+# ADR-010
+
+## Title
+
+Decision Engine — deterministic decision contract and two added reason codes.
+
+## Status
+
+Proposed (Phase 5 — Decision Engine; awaiting review)
+
+## Context
+
+Phase 5 implements the Decision Engine: **Data Sufficiency Evaluation**, the **Business Rule
+Engine** and the **Decision Gate** (`docs/architecture.md`). The output contracts for these
+stages already existed from Phase 2 (`evaluation.schema.ts`, `business-rule.schema.ts`,
+`decision.schema.ts`). Two gaps surfaced during implementation:
+
+1. The `ReasonCode` enum (the explainability vocabulary, ADR-006) had codes for every *negative*
+   outcome a decision stage can report (`MISSING_REQUIRED_INFORMATION`, `STRUCTURED_DATA_MISSING`,
+   `POLICY_MISSING`, `BUSINESS_RULE_CONFLICT`, `ESCALATION_REQUIRED`) but no *positive* code for
+   "data is sufficient" or "a rule passed". The schemas require a `reasonCode`, and design
+   principle 4 requires every recorded outcome — including the reasons an `AUTO_REPLY` was
+   permitted — to be explainable. Reusing a semantically-wrong code (e.g. `AUTO_REPLY_ALLOWED`
+   for a sufficiency result) would defeat that.
+2. Consumers (Phase 6 Response Generation, Phase 7 Audit) need the three stage outputs together.
+
+## Decision
+
+- Add **two** reason codes to `src/domain/enums.ts`: `DATA_SUFFICIENT` (Data Sufficiency
+  Evaluation passed) and `RULE_PASSED` (a business rule was satisfied). No existing code was
+  changed. The set stays minimal: all negative/escalation paths reuse the existing codes.
+- Add a single composed contract, `DecisionEngineResultSchema`
+  (`{ caseId?, evaluation, ruleResults, decision }`), mirroring how the Hybrid Retrieval Layer
+  packages its sub-stages (ADR-009), so downstream stages depend on one shape.
+- Implement the engine as **deterministic and synchronous** under `src/pipeline/decision/`
+  (ADR-001, ADR-005). The Decision Gate orders its checks most-fundamental first (scope →
+  confidence → sufficiency → rules) so the reason code names the first blocker, and prefers
+  `AUTO_REPLY` whenever every check passes (ADR-007). A missing *customer* slot yields
+  `ASK_FOR_MORE_INFORMATION`; a gap on our side (unresolved record, missing policy) yields
+  `HUMAN_ESCALATION`.
+- The concrete business-rule thresholds (24h cancellation window; "only delivered orders may be
+  reported damaged"; refunded/voided invoices need human review) are MVP defaults, isolated in
+  `business-rules.ts` for the owner to adjust. They are not a published policy.
+
+## Consequences
+
+Advantages:
+
+- positive outcomes are explainable with accurate reason codes; the audit trail can show why an
+  auto-reply was allowed, not only why one was blocked;
+- one decision contract for downstream stages; the retrieve/decide/respond boundaries stay sharp;
+- the whole engine is deterministic, fast and unit-testable.
+
+Trade-off:
+
+- two additions to the canonical `ReasonCode` enum (ADR-006). They are additive and documented
+  here for review; per the engineering workflow the change is not committed until approved.
+
+## Note on phase numbering
+
+This matches `docs/roadmap.md`: Phase 5 is "Decision Engine". (The earlier "Phase 5 — Hybrid
+Retrieval Layer" request in ADR-009 corresponded to the roadmap's Phase 4 retrieval work.)

@@ -23,3 +23,6 @@ The pipeline order is fixed by the architecture and must not be changed without 
 | Semantic PDF Retrieval | [`retrieval/`](retrieval/) | Phase 4 |
 | Structured Data Retrieval | [`retrieval/`](retrieval/) | Phase 5 (Hybrid Retrieval Layer) |
 | Hybrid Retrieval Layer (combines the two retrieval paths) | [`retrieval/`](retrieval/) | Phase 5 |
+| Data Sufficiency Evaluation | [`decision/`](decision/) | Phase 5 (Decision Engine) |
+| Business Rule Engine | [`decision/`](decision/) | Phase 5 (Decision Engine) |
+| Decision Gate | [`decision/`](decision/) | Phase 5 (Decision Engine) |

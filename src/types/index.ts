@@ -27,6 +27,7 @@ import type {
   BusinessRuleResultSchema,
   EvaluationSummarySchema,
   DecisionSchema,
+  DecisionEngineResultSchema,
   CaseStateSchema,
   AuditStageRecordSchema,
   AuditTraceSchema,
@@ -67,6 +68,8 @@ export type BusinessRuleResult = z.infer<typeof BusinessRuleResultSchema>;
 export type EvaluationSummary = z.infer<typeof EvaluationSummarySchema>;
 /** Object outcome of the Decision Gate (distinct from the `Decision` enum value). */
 export type DecisionResult = z.infer<typeof DecisionSchema>;
+/** Combined output of the Decision Engine (sufficiency + rules + gate decision). */
+export type DecisionEngineResult = z.infer<typeof DecisionEngineResultSchema>;
 
 // Case assembly
 export type CaseState = z.infer<typeof CaseStateSchema>;

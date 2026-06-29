@@ -76,6 +76,41 @@ Status: DONE
 
 ---
 
+# Phase 8 — Prototype Workbench
+
+Goal:
+
+Create an interview-ready browser interface that demonstrates how the AI Decision Engine processes customer emails.
+
+Implementation:
+
+- Static HTML
+- CSS
+- Vanilla JavaScript
+- Served by the existing Express backend
+- No React
+- No Next.js
+- No additional frontend framework
+
+Features:
+
+- Custom email input
+- Predefined demo scenarios
+- Submit email to backend API
+- Display detected intent
+- Display extracted slots
+- Display structured business facts
+- Display retrieved policy evidence
+- Display data sufficiency result
+- Display business rule results
+- Display final decision
+- Display generated response
+- Display audit trace
+
+Deliverable:
+
+A lightweight prototype workbench that shows the full internal pipeline of the system in a clear visual format.
+
 # Completion Rules
 
 A phase is complete only when:

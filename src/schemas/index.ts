@@ -13,6 +13,7 @@ export * from './retrieval.schema';
 export * from './business-rule.schema';
 export * from './evaluation.schema';
 export * from './decision.schema';
+export * from './decision-engine.schema';
 export * from './case-state.schema';
 export * from './audit.schema';
 export * from './final-response.schema';
