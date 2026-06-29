@@ -1,7 +1,16 @@
 import { z } from 'zod';
 
 /** The categories of personal data the PII Sanitizer recognises. */
-const PII_TYPES = ['email', 'phone', 'name', 'address', 'order_id', 'other'] as const;
+export const PII_TYPES = [
+  'email',
+  'phone',
+  'name',
+  'address',
+  'order_id',
+  'invoice_id',
+  'customer_id',
+  'other',
+] as const;
 
 /** A single piece of personal data the sanitizer found in the raw email. */
 export const DetectedPIISchema = z.object({
