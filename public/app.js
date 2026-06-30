@@ -148,6 +148,19 @@
   const decisionTone = (d) => DECISION_TONE[d] || "gray";
   const decisionLabel = (d) => titleCase(d);
 
+  // Deterministic, non-LLM message shown in the Workbench when no customer reply was delivered.
+  // OUT_OF_SCOPE cases get an explicit redirect so the outcome doesn't read as a system failure.
+  const OUT_OF_SCOPE_REDIRECT = {
+    de: "Diese Anfrage liegt außerhalb der unterstützten Customer-Service-Prozesse. Bitte nutzen Sie den für Ihr Anliegen vorgesehenen Kontakt oder besuchen Sie die entsprechende Seite auf unserer Website.",
+    en: "This request is outside the supported customer-service workflows. Please use the appropriate contact channel or visit the relevant section of our website.",
+  };
+  const undeliveredMessage = (decision, language) => {
+    if (decision === "OUT_OF_SCOPE") {
+      return OUT_OF_SCOPE_REDIRECT[language] || OUT_OF_SCOPE_REDIRECT.en;
+    }
+    return "No customer response was delivered for this case.";
+  };
+
   const RISK_TONE = { low: "green", medium: "yellow", high: "red" };
   const PASS_TONE = { pass: "green", fail: "red", not_checked: "gray" };
   const SAFETY_TONE = { safe: "green", review: "yellow", unsafe: "red" };
@@ -250,7 +263,7 @@
     els.responseDraft.className = delivered ? "draft" : "draft escalation";
     els.responseDraft.textContent = delivered
       ? r.response.draft
-      : "No customer response was delivered for this case.";
+      : undeliveredMessage(decision, r.response.language);
 
     // Deterministic "why this decision / what happens next" guidance.
     const g = r.guidance || {};
