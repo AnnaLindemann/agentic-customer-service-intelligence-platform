@@ -126,6 +126,7 @@ export const DecisionAuditMetadataSchema = z.object({
     'auto_replied',
     'information_requested',
     'escalated',
+    'redirected',
     'no_response_delivered',
   ]),
 });

@@ -1,5 +1,31 @@
 [
   {
+    "sku": "SKU-PACK-35L",
+    "name": "Vista 35L Backpack",
+    "category": "Packs",
+    "description": "Lightweight day-and-overnight hiking pack with 35 litre capacity.",
+    "price": 149.0,
+    "currency": "USD",
+    "availability": "in_stock",
+    "quantityOnHand": 21,
+    "lowStockThreshold": 10,
+    "restockDate": null,
+    "discontinued": false
+  },
+  {
+    "sku": "SKU-PACK-TRV",
+    "name": "Vista Travel Pack",
+    "category": "Packs",
+    "description": "Carry-on travel backpack with lockable zips and laptop sleeve.",
+    "price": 159.0,
+    "currency": "USD",
+    "availability": "low_stock",
+    "quantityOnHand": 6,
+    "lowStockThreshold": 10,
+    "restockDate": null,
+    "discontinued": false
+  },
+  {
     "sku": "SKU-TENT-2P",
     "name": "Summit 2-Person Tent",
     "category": "Camping",

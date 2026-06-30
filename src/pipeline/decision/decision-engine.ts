@@ -27,6 +27,7 @@ import type {
 import { evaluateDataSufficiency } from './data-sufficiency';
 import { applyBusinessRules } from './business-rules';
 import { decide } from './decision-gate';
+import type { EscalationSignal } from './escalation-triggers';
 
 export interface DecisionEngineInput {
   /** The originating case id, recorded on the output when present. */
@@ -43,6 +44,13 @@ export interface DecisionEngineInput {
   policyEvidence: RetrievedSource[];
   /** Ranked candidate intents; used by the gate to detect ambiguity when present. */
   rankedIntents?: RankedIntent[];
+  /**
+   * Output of the Escalation-Trigger Guard (ADR-014). When triggered, the gate reserves the case
+   * for a human regardless of eligibility. Computed by the orchestrator from the masked email.
+   */
+  escalationSignal?: EscalationSignal;
+  /** Deterministic product-resolution status (product-availability workflow only). */
+  productResolution?: 'resolved' | 'ambiguous' | 'underspecified' | 'not_found';
   /** Evaluation time, injectable for deterministic testing. Defaults to now. */
   now?: Date;
 }
@@ -74,6 +82,8 @@ export function runDecisionEngine(input: DecisionEngineInput): DecisionEngineRes
     rankedIntents: input.rankedIntents,
     evaluation,
     ruleResults,
+    escalationSignal: input.escalationSignal,
+    productResolution: input.productResolution,
   });
 
   return DecisionEngineResultSchema.parse({

@@ -715,3 +715,92 @@ Trade-offs:
   strictly observational and avoids introducing a pipeline entry point ahead of its phase;
 - evaluation metrics are intentionally heuristic; they flag risk for review but do not certify
   correctness.
+
+---
+
+# ADR-014
+
+## Title
+
+Human by Exception v2 — escalate on exception signals, not on the absence of a happy path.
+
+## Status
+
+Accepted (refines the *implementation* of ADR-007; ADR-007 remains accepted)
+
+## Context
+
+ADR-007 set the goal of maximum safe automation, but the Decision Gate implemented the opposite
+default: it escalated on the *absence of a happy path* rather than on the *presence of a real
+exception*. Three branches caused this — any failed business rule escalated, any unresolved record
+escalated, and any unknown/ambiguous intent escalated — so most "negative" outcomes (an order that
+can no longer be cancelled, a refunded invoice, an item that arrived damaged) were sent to a human
+even though they are fully grounded in policy and business data and require no human judgement. For
+an interview prototype this demonstrated "Human by Default", and for an enterprise Customer
+Operations platform it would inflate the human queue and hide the system's real capability.
+
+The model also lacked the one thing that makes aggressive automation *safe*: a deterministic
+detector for the cases policy **explicitly** reserves for humans (disputes, chargebacks,
+goodwill/Kulanz, fraud, legal). Because those signals were not detected, the system compensated by
+escalating broadly.
+
+## Decision
+
+Adopt **Human by Exception v2** — the system automates every interaction it can handle safely, and
+escalates only when safe automation is genuinely impossible or policy explicitly requires manual
+review. Three changes deliver this:
+
+1. **Classify each workflow by the kind of decision it is.**
+   - *Informational* (product availability, invoice questions) — answer from data + policy for
+     **all** statuses (including refunded/voided invoices).
+   - *Intake* (damaged item) — acknowledge, explain policy, open a simulated return/replacement
+     case, request evidence, state next steps. Never a gate to a human.
+   - *Action* (cancellation) — the only workflow whose rules gate an action; an eligible order is
+     auto-confirmed (with a simulated reference), an ineligible one is **explained** with the
+     return-after-delivery path rather than escalated.
+
+2. **Add a deterministic Escalation-Trigger Guard** (`escalation-triggers.ts`) that scans the
+   masked email for the human-only signals above (German + English). When it fires, the Decision
+   Gate escalates regardless of eligibility. This is the precise safety net that makes the
+   relaxations safe.
+
+3. **Re-order and re-target the Decision Gate.** New order: explicit escalation signal →
+   out-of-scope → unknown/ambiguous (**ASK**) → missing customer slot (**ASK**) → unresolved record
+   (**ASK**) → failed *blocking* rule (escalate; none today) → damaged-item not delivered (**ASK**)
+   → AUTO_REPLY. Business rules are reclassified `blocking` vs `informational`; current eligibility
+   rules are *informational* and shape *which* grounded reply is sent, not whether a human is
+   involved.
+
+Supporting changes: a deterministic **Case Intake** helper (`case-intake.ts`) mints simulated
+references (`CXL-…`, `RMA-…`); the **response prompt** is held to a four-part customer-guidance
+contract (what happened · why · what happens next · what to do) and quotes the case reference; a
+deterministic **Customer Guidance** module (`customer-guidance.ts`) powers the Workbench
+"why/next" panels and supplies a safe German reply whenever no compliant draft exists, so the
+customer is *always* guided. Grounding stays conservative: no broad hard-coded policy fallback is
+added — a missing grounding policy remains a safe fallback to a human.
+
+## What does NOT change
+
+- **ADR-001 / ADR-005** — all decisions remain deterministic; the LLM still only writes text.
+- **Pipeline order and responsibility split** — stages keep their order; the guard and intake slot
+  into the existing decision boundary; the audit layer stays passive (ADR-013).
+- **PII strategy (ADR-004)**, **provider abstraction (ADR-011)**, **hybrid retrieval (ADR-009)** —
+  untouched. `HUMAN_ESCALATION` still makes no LLM call (ADR-011); its customer message is
+  deterministic.
+- **Schemas / domain enums** — `Decision`, `Workflow`, `RiskLevel`, `ReasonCode` unchanged. The only
+  schema addition is an **optional** `kind` on `BusinessRuleResult` (defaults to informational).
+
+## Consequences
+
+Advantages:
+
+- the large majority of requests are resolved automatically; escalations become meaningful;
+- the safety net is precise (explicit signals) and fully auditable;
+- every outcome guides the customer, deterministically when no LLM draft exists.
+
+Trade-offs:
+
+- more deterministic branches and message templates to maintain;
+- the escalation-trigger lexicon is heuristic and will need tuning;
+- "negative" auto-replies (e.g. an ineligible cancellation) depend on cited policy evidence to pass
+  the compliance gate; when retrieval returns no usable passage the case still falls back to a human.

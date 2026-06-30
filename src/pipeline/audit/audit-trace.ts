@@ -85,6 +85,9 @@ function determineFinalOutcome(
   response: GeneratedResponse | undefined,
 ): DecisionAuditMetadata['finalOutcome'] {
   if (decision === Decision.HUMAN_ESCALATION) return 'escalated';
+  // Out-of-scope is auto-closed with a deterministic redirect (no LLM draft), but it is a handled
+  // outcome, not a failure to respond.
+  if (decision === Decision.OUT_OF_SCOPE) return 'redirected';
   if (response?.delivered) {
     return decision === Decision.AUTO_REPLY ? 'auto_replied' : 'information_requested';
   }
@@ -134,7 +137,7 @@ function buildComplianceMetadata(
     failedChecks,
     groundingStatus,
     piiLeakCheckResult: checkOutcome(response, 'no_pii_leakage'),
-    languageCheckResult: checkOutcome(response, 'german_language'),
+    languageCheckResult: checkOutcome(response, 'language_match'),
     unsupportedPromiseCheckResult: checkOutcome(response, 'no_unsupported_promises'),
   };
 }

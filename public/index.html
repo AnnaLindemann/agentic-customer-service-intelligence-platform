@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Decision Engine — Prototype Workbench</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="masthead">
+      <div class="masthead-inner">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true">◆</span>
+          <div>
+            <h1>AI Decision Engine</h1>
+            <p class="brand-sub">Prototype Workbench — explainable customer-email processing</p>
+          </div>
+        </div>
+        <div class="principle" title="The system's core engineering principle">
+          LLMs interpret · Rules decide
+        </div>
+      </div>
+    </header>
+
+    <main class="layout">
+      <!-- LEFT COLUMN — Customer interaction -->
+      <section class="column column-left" aria-label="Customer interaction">
+        <div class="card">
+          <div class="card-head">
+            <h2>Customer Email</h2>
+            <span class="card-tag">Input</span>
+          </div>
+          <div class="card-body">
+            <label class="field-label" for="scenario">Demo scenario</label>
+            <select id="scenario" class="select"></select>
+
+            <label class="field-label" for="email">Incoming email</label>
+            <textarea
+              id="email"
+              class="textarea"
+              rows="11"
+              placeholder="Paste a customer email (German or English), or pick a demo scenario above. e.g. “Bitte stornieren Sie meine Bestellung 10004.”"
+            ></textarea>
+
+            <div class="actions">
+              <button id="process" class="btn btn-primary" type="button">
+                <span class="btn-label">Process Email</span>
+                <span class="spinner" hidden></span>
+              </button>
+              <button id="clear" class="btn btn-ghost" type="button">Clear</button>
+            </div>
+            <p id="form-error" class="form-error" hidden></p>
+          </div>
+        </div>
+
+        <div class="card" id="response-card">
+          <div class="card-head">
+            <h2>Customer Response</h2>
+            <span id="response-badge" class="badge badge-gray">Awaiting run</span>
+          </div>
+          <div class="card-body">
+            <div id="response-empty" class="empty-state">
+              Run an email to see the customer-facing reply and the reasoning behind the outcome.
+            </div>
+            <div id="response-content" hidden>
+              <div id="response-decision" class="decision-banner"></div>
+              <div id="response-draft" class="draft"></div>
+              <div id="response-guidance" class="guidance"></div>
+              <div id="response-meta" class="response-meta"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- RIGHT COLUMN — Pipeline visualization -->
+      <section class="column column-right" aria-label="Pipeline visualization">
+        <div id="pipeline-empty" class="pipeline-placeholder">
+          <div class="pipeline-placeholder-inner">
+            <div class="flow-preview">
+              <span>Email</span><span class="flow-arrow">↓</span>
+              <span>Intent</span><span class="flow-arrow">↓</span>
+              <span>Slots</span><span class="flow-arrow">↓</span>
+              <span>Retrieval</span><span class="flow-arrow">↓</span>
+              <span>Rules</span><span class="flow-arrow">↓</span>
+              <span>Decision</span><span class="flow-arrow">↓</span>
+              <span>Response</span><span class="flow-arrow">↓</span>
+              <span>Audit</span>
+            </div>
+            <p>The reasoning pipeline appears here once an email is processed.</p>
+          </div>
+        </div>
+
+        <div id="pipeline" class="pipeline" hidden></div>
+      </section>
+    </main>
+
+    <footer class="page-footer">
+      <span>Interview demonstration · synthetic data · not a customer-facing application</span>
+    </footer>
+
+    <script src="./app.js"></script>
+  </body>
+</html>

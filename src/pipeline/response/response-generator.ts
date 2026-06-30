@@ -37,6 +37,7 @@ import {
 import { validateCompliance } from './compliance-validation';
 import { containsUnmaskedPII } from '../customer-email';
 import type { PreparedResponseEvidence } from './prompt';
+import type { Language } from './language';
 
 export interface ResponseGenerationInput {
   caseId?: string;
@@ -51,6 +52,12 @@ export interface ResponseGenerationInput {
   policyEvidence: RetrievedSource[];
   /** Passed/failed deterministic rules used only as grounding context; never changed here. */
   ruleResults?: BusinessRuleResult[];
+  /** Simulated case reference (ADR-014) to quote in the reply, when a case was opened. */
+  caseReference?: string;
+  /** Customer-facing language detected from the email (German or English). Defaults to German. */
+  language?: Language;
+  /** Deterministic, grounded next-step lines the draft should convey. */
+  nextSteps?: string[];
   /** Raw PII values detected in the email; used by the compliance leak check. */
   detectedPiiValues?: string[];
 }
@@ -88,12 +95,22 @@ export async function runResponseGeneration(
   llm?: LlmClient,
 ): Promise<GeneratedResponse> {
   const { decision } = input;
+  const language: Language = input.language ?? 'de';
 
-  // Human escalation: no customer draft, no LLM call.
-  if (decision.decision === Decision.HUMAN_ESCALATION) {
+  // No LLM draft is generated for human escalation (a person replies) or out-of-scope (the
+  // customer receives a deterministic redirect). The orchestrator supplies the customer-facing
+  // text in both cases; the LLM is not involved.
+  if (
+    decision.decision === Decision.HUMAN_ESCALATION ||
+    decision.decision === Decision.OUT_OF_SCOPE
+  ) {
+    const detail =
+      decision.decision === Decision.HUMAN_ESCALATION
+        ? 'Human escalation — no customer draft generated.'
+        : 'Out of scope — deterministic redirect, no draft generated.';
     return GeneratedResponseSchema.parse({
       caseId: input.caseId,
-      language: 'de',
+      language,
       promptVersion: RESPONSE_PROMPT_VERSION,
       decision,
       draft: null,
@@ -101,13 +118,7 @@ export async function runResponseGeneration(
       citedEvidence: [],
       compliance: {
         passed: true,
-        checks: [
-          {
-            name: 'no_draft_required',
-            passed: true,
-            detail: 'Human escalation — no customer draft generated.',
-          },
-        ],
+        checks: [{ name: 'no_draft_required', passed: true, detail }],
       },
     });
   }
@@ -127,6 +138,9 @@ export async function runResponseGeneration(
       structuredFacts: input.structuredFacts,
       policyEvidence: input.policyEvidence,
       ruleResults: input.ruleResults,
+      caseReference: input.caseReference,
+      language,
+      nextSteps: input.nextSteps,
     });
     const client = llm ?? createLlmClient();
     const result = await client.generateJson(
@@ -147,7 +161,7 @@ export async function runResponseGeneration(
         : ReasonCode.ESCALATION_REQUIRED;
     return GeneratedResponseSchema.parse({
       caseId: input.caseId,
-      language: 'de',
+      language,
       promptVersion: RESPONSE_PROMPT_VERSION,
       decision,
       draft: null,
@@ -180,12 +194,13 @@ export async function runResponseGeneration(
     policyEvidence: promptEvidence.policyEvidence,
     ruleResults: input.ruleResults,
     piiValues,
+    language,
   });
 
   const delivered = compliance.passed;
   return GeneratedResponseSchema.parse({
     caseId: input.caseId,
-    language: 'de',
+    language,
     promptVersion: RESPONSE_PROMPT_VERSION,
     decision,
     // Only a compliant draft is delivered; otherwise the safe fallback is no draft.

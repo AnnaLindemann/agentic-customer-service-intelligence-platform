@@ -41,6 +41,13 @@ export const Decision = {
   AUTO_REPLY: 'AUTO_REPLY',
   ASK_FOR_MORE_INFORMATION: 'ASK_FOR_MORE_INFORMATION',
   HUMAN_ESCALATION: 'HUMAN_ESCALATION',
+  /**
+   * The request is understood but outside this mailbox's customer-service scope (e.g. a job
+   * application). It is auto-closed with a polite redirect to the correct contact — no human agent
+   * is needed (ADR-014: Human by Exception). Distinct from HUMAN_ESCALATION so deflected
+   * out-of-scope contacts are observably separate from cases a person must handle.
+   */
+  OUT_OF_SCOPE: 'OUT_OF_SCOPE',
 } as const;
 export type Decision = (typeof Decision)[keyof typeof Decision];
 export const DECISIONS = Object.values(Decision) as EnumValues<typeof Decision>;
@@ -71,6 +78,8 @@ export const ReasonCode = {
   POLICY_MISSING: 'POLICY_MISSING',
   /** Expected structured business data was not found. */
   STRUCTURED_DATA_MISSING: 'STRUCTURED_DATA_MISSING',
+  /** A product name was understood, retrieval ran, but no such product exists in the catalogue. */
+  PRODUCT_NOT_FOUND: 'PRODUCT_NOT_FOUND',
   /** Enough structured and policy evidence exists to answer the case safely. */
   DATA_SUFFICIENT: 'DATA_SUFFICIENT',
   /** A deterministic business rule was satisfied. */

@@ -7,16 +7,25 @@
  * It is the single point where the system commits to a lane (architecture: "Decision Gate
  * returns exactly one outcome ... based on rules, sufficiency and confidence").
  *
- * Policy (ADR-007, "Human by Exception"): `AUTO_REPLY` is the goal whenever every
- * deterministic check passes; escalation is the safety fallback, not the default. The checks
- * are ordered most-fundamental first so the reason code names the *first* blocking cause:
+ * Policy (ADR-007 / ADR-014, "Human by Exception v2"): the system automates every interaction it
+ * can handle safely. Escalation happens only when safe automation is genuinely impossible or
+ * policy *explicitly* reserves the case for a human. The checks are ordered most-fundamental first
+ * so the reason code names the *first* decisive cause:
  *
- *   1. Out-of-scope / unknown intent  → HUMAN_ESCALATION   (cannot be handled at all)
- *   2. Ambiguous / low-confidence intent → HUMAN_ESCALATION (we are unsure what was asked)
- *   3. Insufficient evidence           → ASK_FOR_MORE_INFORMATION when the *customer* can
- *                                        supply it, else HUMAN_ESCALATION
- *   4. Business-rule conflict          → HUMAN_ESCALATION   (policy does not permit the action)
- *   5. Everything passed               → AUTO_REPLY
+ *   1. Explicit escalation signal (dispute / chargeback / goodwill / fraud / legal)
+ *                                      → HUMAN_ESCALATION   (policy reserves these for a human)
+ *   2. Unknown / ambiguous intent      → ASK_FOR_MORE_INFORMATION (ask the customer to clarify)
+ *   3. Out-of-scope / unsupported      → OUT_OF_SCOPE        (auto-close with a polite redirect;
+ *                                        understood but not a customer-service request — no human)
+ *   4. Insufficient evidence:
+ *        - missing customer slot        → ASK_FOR_MORE_INFORMATION
+ *        - referenced record unresolved → ASK_FOR_MORE_INFORMATION (confirm the identifier)
+ *        - missing grounding policy     → HUMAN_ESCALATION (conservative safe fallback)
+ *   5. Failed *blocking* business rule  → HUMAN_ESCALATION   (none today; informational rules
+ *                                        instead shape which grounded reply is sent)
+ *   6. Damaged item not yet delivered   → ASK_FOR_MORE_INFORMATION (confirm delivery & details)
+ *   7. Everything else                  → AUTO_REPLY (eligible action confirmed, ineligible action
+ *                                        explained with the alternative, or question answered)
  *
  * The output is validated against `DecisionSchema` (the Phase 2 contract).
  */
@@ -28,6 +37,7 @@ import type {
   EvaluationSummary,
   RankedIntent,
 } from '../../types';
+import type { EscalationSignal } from './escalation-triggers';
 
 /** Minimum confidence the top intent must reach before the gate trusts the classification. */
 export const MIN_INTENT_CONFIDENCE = 0.5;
@@ -41,6 +51,15 @@ export interface DecisionGateInput {
   rankedIntents?: RankedIntent[];
   evaluation: EvaluationSummary;
   ruleResults: BusinessRuleResult[];
+  /** Output of the Escalation-Trigger Guard; when triggered, the case is reserved for a human. */
+  escalationSignal?: EscalationSignal;
+  /**
+   * Deterministic product-resolution status (product-availability workflow only). Distinguishes a
+   * specific name with no catalogue match (`not_found` → auto-answer) from an under-specified or
+   * ambiguous request (`underspecified`/`ambiguous` → ask). Absent when not a product question or
+   * no product name was given.
+   */
+  productResolution?: 'resolved' | 'ambiguous' | 'underspecified' | 'not_found';
 }
 
 const RISK_ORDER: Record<RiskLevel, number> = {
@@ -79,40 +98,109 @@ function result(
   return DecisionSchema.parse({ decision, riskLevel, reasonCode, rationale });
 }
 
+/** A failed rule counts as blocking only when explicitly marked so (ADR-014). */
+function isBlocking(rule: BusinessRuleResult): boolean {
+  return rule.kind === 'blocking';
+}
+
+/**
+ * Human-readable rationale for an `AUTO_REPLY`, naming the informational outcome so the audit
+ * trail (and the Workbench "why" panel) explain *which* grounded reply is being sent.
+ */
+function autoReplyRationale(workflow: Workflow, ruleResults: BusinessRuleResult[]): string {
+  const failed = ruleResults.filter((rule) => !rule.passed);
+  switch (workflow) {
+    case Workflow.CANCELLATION:
+      return failed.length === 0
+        ? 'Order is eligible for cancellation; confirming the cancellation and opening a case.'
+        : 'Order is no longer eligible for self-service cancellation; explaining the policy and the return-after-delivery path.';
+    case Workflow.DAMAGED_ITEM:
+      return 'Delivered order; opening a return/replacement case and requesting the required evidence.';
+    case Workflow.INVOICE:
+      return 'Invoice located; answering the billing question from the stored record and policy.';
+    case Workflow.PRODUCT_AVAILABILITY:
+      return 'Product located in the catalogue; answering availability from inventory data.';
+    default:
+      return 'Scope, confidence and data sufficiency all passed; replying automatically.';
+  }
+}
+
 /** Choose exactly one action for the case. See the module header for the ordering rationale. */
 export function decide(input: DecisionGateInput): DecisionResult {
-  const { workflow, intent, rankedIntents, evaluation, ruleResults } = input;
+  const { workflow, intent, rankedIntents, evaluation, ruleResults, escalationSignal, productResolution } =
+    input;
 
-  // 1. Out of scope — a safety net; Scope Validation should normally catch this first.
+  // 1. Explicit escalation signal — policy reserves disputes/chargebacks/goodwill/fraud/legal
+  //    for a human, regardless of how eligible the underlying request would otherwise be.
+  if (escalationSignal?.triggered) {
+    return result(
+      Decision.HUMAN_ESCALATION,
+      RiskLevel.HIGH,
+      ReasonCode.ESCALATION_REQUIRED,
+      `Manual review required: a '${escalationSignal.category}' signal was detected in the request.`,
+    );
+  }
+
+  // 2. Unknown or ambiguous intent — ask the customer to clarify rather than escalate (v2).
+  //    Checked before scope: an unknown intent also has an `unsupported` workflow, but it is
+  //    recoverable by a clarifying question, not a redirect.
+  if (intent === Intent.UNKNOWN || isAmbiguous(rankedIntents)) {
+    return result(
+      Decision.ASK_FOR_MORE_INFORMATION,
+      RiskLevel.LOW,
+      ReasonCode.UNKNOWN_INTENT,
+      'Intent is unclear or ambiguous; asking the customer to clarify their request.',
+    );
+  }
+
+  // 3. Understood but out of scope (e.g. a job application). Auto-close with a polite redirect to
+  //    the correct contact — no human agent is required (ADR-014). Distinct from HUMAN_ESCALATION.
   if (workflow === Workflow.UNSUPPORTED || intent === Intent.OUT_OF_SCOPE) {
     return result(
-      Decision.HUMAN_ESCALATION,
-      RiskLevel.HIGH,
+      Decision.OUT_OF_SCOPE,
+      RiskLevel.LOW,
       ReasonCode.OUT_OF_SCOPE,
-      'Intent does not map to a supported workflow.',
-    );
-  }
-  if (intent === Intent.UNKNOWN) {
-    return result(
-      Decision.HUMAN_ESCALATION,
-      RiskLevel.HIGH,
-      ReasonCode.UNKNOWN_INTENT,
-      'Intent could not be determined.',
+      'Request is understood but outside customer-service scope; redirecting to the correct contact.',
     );
   }
 
-  // 2. Ambiguous / low-confidence classification.
-  if (isAmbiguous(rankedIntents)) {
-    return result(
-      Decision.HUMAN_ESCALATION,
-      RiskLevel.MEDIUM,
-      ReasonCode.UNKNOWN_INTENT,
-      'Intent classification is ambiguous or below the confidence threshold.',
-    );
+  // 3b. Product-availability resolution (deterministic). When a product name was understood but
+  //     does not uniquely resolve, the outcome depends on *why* — this is decided here rather than
+  //     as a generic "structured data missing" gap:
+  //       - not_found      → the catalogue has no such product: auto-answer (PRODUCT_NOT_FOUND);
+  //       - ambiguous      → several products match: ask which one;
+  //       - underspecified → a generic category: ask for the specific product.
+  //     `resolved` falls through (the product fact is present, so sufficiency passes → AUTO_REPLY).
+  if (workflow === Workflow.PRODUCT_AVAILABILITY && productResolution) {
+    if (productResolution === 'not_found') {
+      return result(
+        Decision.AUTO_REPLY,
+        RiskLevel.LOW,
+        ReasonCode.PRODUCT_NOT_FOUND,
+        'Product name understood, but no matching product exists in the catalogue.',
+      );
+    }
+    if (productResolution === 'ambiguous') {
+      return result(
+        Decision.ASK_FOR_MORE_INFORMATION,
+        RiskLevel.LOW,
+        ReasonCode.MISSING_REQUIRED_INFORMATION,
+        'Several catalogue products match; asking the customer which one they mean.',
+      );
+    }
+    if (productResolution === 'underspecified') {
+      return result(
+        Decision.ASK_FOR_MORE_INFORMATION,
+        RiskLevel.LOW,
+        ReasonCode.MISSING_REQUIRED_INFORMATION,
+        'Request names a generic product category; asking for the specific product.',
+      );
+    }
   }
 
-  // 3. Insufficient evidence. A missing customer slot can be requested; missing structured
-  //    data or policy evidence cannot be self-served and must go to a human.
+  // 4. Insufficient evidence. A missing customer slot or an unresolved referenced record can both
+  //    be recovered by asking the customer; only missing grounding policy falls back to a human
+  //    (v2 keeps grounding conservative — no hard-coded policy fallback yet).
   if (!evaluation.sufficient) {
     const gaps = evaluation.missingInformation.join(', ') || 'required evidence';
     if (evaluation.reasonCode === ReasonCode.MISSING_REQUIRED_INFORMATION) {
@@ -123,30 +211,54 @@ export function decide(input: DecisionGateInput): DecisionResult {
         `Missing required information from the customer: ${gaps}.`,
       );
     }
+    if (evaluation.reasonCode === ReasonCode.STRUCTURED_DATA_MISSING) {
+      return result(
+        Decision.ASK_FOR_MORE_INFORMATION,
+        RiskLevel.LOW,
+        ReasonCode.STRUCTURED_DATA_MISSING,
+        `The referenced record could not be located; asking the customer to confirm: ${gaps}.`,
+      );
+    }
     return result(
       Decision.HUMAN_ESCALATION,
       RiskLevel.MEDIUM,
       evaluation.reasonCode,
-      `Required evidence could not be retrieved to answer safely: ${gaps}.`,
+      `Required grounding evidence is unavailable to answer safely: ${gaps}.`,
     );
   }
 
-  // 4. Business-rule conflict — policy does not permit the requested action.
-  const failed = ruleResults.filter((rule) => !rule.passed);
-  if (failed.length > 0) {
+  // 5. A failed *blocking* business rule is a genuine policy conflict (none today). Informational
+  //    rules that "fail" are not handled here — they shape the AUTO_REPLY message in step 7.
+  const blockingFailed = ruleResults.filter((rule) => !rule.passed && isBlocking(rule));
+  if (blockingFailed.length > 0) {
     return result(
       Decision.HUMAN_ESCALATION,
-      highestRisk(failed),
+      highestRisk(blockingFailed),
       ReasonCode.BUSINESS_RULE_CONFLICT,
-      `Business rule(s) not satisfied: ${failed.map((rule) => rule.ruleId).join(', ')}.`,
+      `Blocking business rule(s) not satisfied: ${blockingFailed.map((rule) => rule.ruleId).join(', ')}.`,
     );
   }
 
-  // 5. All deterministic checks passed — safe to auto-reply.
+  // 6. Damaged-item intake where delivery is not yet confirmed: ask the customer to confirm the
+  //    order and delivery details rather than escalate (the case stays automatable).
+  if (workflow === Workflow.DAMAGED_ITEM) {
+    const deliveredRule = ruleResults.find((rule) => rule.ruleId === 'damaged_item.order_delivered');
+    if (deliveredRule && !deliveredRule.passed) {
+      return result(
+        Decision.ASK_FOR_MORE_INFORMATION,
+        RiskLevel.LOW,
+        ReasonCode.MISSING_REQUIRED_INFORMATION,
+        'Order is not marked delivered; asking the customer to confirm the order and delivery details.',
+      );
+    }
+  }
+
+  // 7. Safe to automate — confirm an eligible action, explain an ineligible one with the
+  //    alternative, or answer the question. Informational rule outcomes shape the message.
   return result(
     Decision.AUTO_REPLY,
     RiskLevel.LOW,
     ReasonCode.AUTO_REPLY_ALLOWED,
-    'Scope, confidence, data sufficiency and business rules all passed.',
+    autoReplyRationale(workflow, ruleResults),
   );
 }

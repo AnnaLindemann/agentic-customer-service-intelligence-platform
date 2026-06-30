@@ -16,6 +16,14 @@
  * NOTE: the concrete thresholds and status checks below (e.g. the 24h cancellation window,
  * "only delivered orders can be reported damaged") are reasonable defaults for the MVP, not
  * a published policy. They are isolated here so the project owner can adjust them on review.
+ *
+ * ADR-014 ("Human by Exception v2"): under v2 these eligibility rules are *informational*, not
+ * *blocking*. A failed eligibility rule no longer routes the case to a human — it tells the
+ * Decision Gate *which* grounded reply to send (e.g. confirm a cancellation vs. explain why it is
+ * no longer possible and offer the return path). Only a rule explicitly marked `blocking` forces
+ * escalation; none do today, but the field keeps the distinction explicit and future-proof. The
+ * genuine human-only signals (disputes, chargebacks, goodwill, fraud, legal) are detected
+ * separately by the Escalation-Trigger Guard.
  */
 import {
   BusinessRuleResultSchema,
@@ -31,6 +39,9 @@ import type {
 
 /** Hours after an order is placed during which it may be auto-cancelled. */
 export const CANCELLATION_WINDOW_HOURS = 24;
+
+/** How the Decision Gate treats a failed rule. See `BusinessRuleResultSchema.kind`. */
+type RuleKind = 'blocking' | 'informational';
 
 export interface BusinessRuleInput {
   workflow: Workflow;
@@ -49,11 +60,13 @@ function makeRule(
   riskLevel: RiskLevel,
   details: string,
   reasonCode?: ReasonCode,
+  kind: RuleKind = 'informational',
 ): BusinessRuleResult {
   return BusinessRuleResultSchema.parse({
     ruleId,
     passed,
     riskLevel,
+    kind,
     reasonCode: reasonCode ?? (passed ? ReasonCode.RULE_PASSED : ReasonCode.BUSINESS_RULE_CONFLICT),
     details,
   });
@@ -150,7 +163,12 @@ function damagedItemRules(facts: StructuredSource[]): BusinessRuleResult[] {
   ];
 }
 
-/** Invoice questions are answerable from billing data unless the invoice was refunded/voided. */
+/**
+ * Invoice questions are informational: any located invoice can be answered from the billing record,
+ * whatever its status (ADR-014). A refunded or voided invoice is *explained* from data, not
+ * escalated; genuine money disputes/chargebacks are caught separately by the Escalation-Trigger
+ * Guard. The rule therefore always passes and carries the status as context for the reply.
+ */
 function invoiceRules(facts: StructuredSource[]): BusinessRuleResult[] {
   const fact = findFact(facts, 'invoice');
   if (!fact) {
@@ -162,15 +180,12 @@ function invoiceRules(facts: StructuredSource[]): BusinessRuleResult[] {
   }
   const invoice = parsed.data;
 
-  const closed = invoice.status === 'refunded' || invoice.status === 'voided';
   return [
     makeRule(
       'invoice.answerable',
-      !closed,
-      closed ? RiskLevel.MEDIUM : RiskLevel.LOW,
-      closed
-        ? `Invoice ${invoice.invoiceId} is '${invoice.status}'; refunded or voided invoices need human review.`
-        : `Invoice ${invoice.invoiceId} is '${invoice.status}'; the question can be answered from billing data.`,
+      true,
+      RiskLevel.LOW,
+      `Invoice ${invoice.invoiceId} is '${invoice.status}'; the question is answered from the billing record.`,
     ),
   ];
 }

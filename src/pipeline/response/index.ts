@@ -26,3 +26,16 @@ export {
   type PreparedResponseEvidence,
   type ResponsePromptInput,
 } from './prompt';
+
+export {
+  buildDecisionGuidance,
+  fallbackCustomerReply,
+  customerNameFromFacts,
+  personalizeGreeting,
+  type DecisionGuidance,
+  type GuidanceInput,
+} from './customer-guidance';
+
+export { detectLanguage, type Language } from './language';
+
+export { buildNextSteps, CAREERS_URL, type NextStepInput } from './next-steps';

@@ -11,6 +11,15 @@ export const BusinessRuleResultSchema = z.object({
   passed: z.boolean(),
   riskLevel: z.enum(RISK_LEVELS),
   reasonCode: z.enum(REASON_CODES),
+  /**
+   * How the Decision Gate must treat a *failed* rule (ADR-014, "Human by Exception v2"):
+   *   - `blocking`      — a genuine policy conflict; a failure routes the case to a human.
+   *   - `informational` — eligibility that shapes *which* grounded reply is sent, never a human
+   *                       handoff (e.g. an order past its cancellation window is explained, not
+   *                       escalated).
+   * Optional for backward compatibility; absent is treated as `informational`.
+   */
+  kind: z.enum(['blocking', 'informational']).optional(),
   /** Optional human-readable explanation of the outcome. */
   details: z.string().optional(),
 });

@@ -7,8 +7,9 @@ import type {
   StructuredSource,
   Workflow,
 } from '../../types';
+import type { Language } from './language';
 
-export const RESPONSE_PROMPT_VERSION = 'response-generation/v1';
+export const RESPONSE_PROMPT_VERSION = 'response-generation/v2';
 
 const PII_KEYS = new Set(
   [
@@ -171,24 +172,93 @@ export interface ResponsePromptInput {
   structuredFacts: StructuredSource[];
   policyEvidence: RetrievedSource[];
   ruleResults?: BusinessRuleResult[];
+  /** Simulated case reference (e.g. `RMA-10003`) the reply should quote, when one was opened. */
+  caseReference?: string;
+  /** Customer-facing language the reply must be written in. */
+  language: Language;
+  /** Deterministic, grounded next-step lines the draft must convey (from `buildNextSteps`). */
+  nextSteps?: string[];
 }
 
-const SYSTEM_PROMPT = [
-  'Du bist ein Kundenservice-Assistent eines Online-Händlers. Du verfasst die Antwort an die',
+const SYSTEM_PROMPT_DE = [
+  'Du bist ein Customer-Operations-Assistent eines Online-Händlers. Du verfasst die Antwort an die',
   'Kundin oder den Kunden ausschließlich auf Deutsch, höflich und in der Sie-Form.',
   '',
   'Strikte Regeln:',
-  '- Verwende ausschließlich die bereitgestellten Fakten, bestandenen Regeln und Richtlinien.',
+  '- Verwende ausschließlich die bereitgestellten Fakten, Regelergebnisse und Richtlinien.',
   '- Erfinde keine Bestelldaten, Beträge, Fristen, Namen oder Sachverhalte.',
-  '- Triff keine Zusagen, die nicht ausdrücklich durch die Belege oder bestandenen Regeln gestützt sind.',
+  '- Triff keine Zusagen, die nicht ausdrücklich durch die Belege, Regeln oder den EMPFOHLENEN',
+  '  NÄCHSTEN SCHRITT gestützt sind. Erfinde keine Rabatte, Aktionen oder Lieferzusagen.',
   '- Ändere die getroffene Entscheidung nicht; formuliere ausschließlich den Antworttext.',
-  '- Bei ASK_FOR_MORE_INFORMATION: bitte genau um die fehlenden Informationen.',
-  '- Gib keine personenbezogenen Daten oder maskierten Platzhalter aus.',
+  '- Gib keine personenbezogenen Daten oder maskierten Platzhalter (z. B. [ORDER_ID_1]) aus.',
+  '',
+  'Formatiere die Antwort als echte Geschäfts-E-Mail mit Absätzen, getrennt durch je eine Leerzeile:',
+  '  Anrede in genau EINER Zeile: „Guten Tag," (eine Personalisierung mit dem Namen wird',
+  '    automatisch ergänzt — schreibe selbst keinen Namen)',
+  '  (Leerzeile)',
+  '  Eingangsbestätigung des Anliegens',
+  '  (Leerzeile)',
+  '  Hauptantwort: was passiert ist und warum (kurz, gestützt auf Fakten/Richtlinie)',
+  '  (Leerzeile)',
+  '  Nächste Schritte: übernimm den EMPFOHLENEN NÄCHSTEN SCHRITT wörtlich sinngemäß',
+  '  (Leerzeile)',
+  '  Grußformel ("Mit freundlichen Grüßen" / "Ihr Kundenservice")',
+  'Verwende echte Leerzeilen zwischen den Absätzen, keinen durchgehenden Fließtext.',
+  '',
+  '- Jede Antwort soll die Kundin oder den Kunden zum nächsten Schritt führen.',
+  '- Bei ASK_FOR_MORE_INFORMATION: bitte konkret um die fehlende Angabe; sage KEINE Aktion zu.',
+  '- Nenne Erstattung, Gutschrift oder kostenlosen Ersatz nur, wenn dies durch die RICHTLINIEN-',
+  '  AUSZÜGE oder den EMPFOHLENEN NÄCHSTEN SCHRITT gedeckt ist.',
+  '- Wenn ein FALLBEZUG angegeben ist, nenne diese Referenz in der Antwort.',
+  '- Zitiere in "citedRefs" ausschließlich die exakten Referenzkürzel aus den RICHTLINIEN-AUSZÜGEN',
+  '  bzw. STRUKTURIERTEN FAKTEN (z. B. "policy:1"), niemals Abschnittsnummern wie "policy:2.2".',
   '- Nenne in "citedRefs" mindestens eine tatsächlich verwendete Referenz.',
   '',
   'Antworte ausschließlich mit einem JSON-Objekt in genau diesem Format:',
   '{"reply": "<deutsche Antwort>", "citedRefs": ["<ref>", ...]}',
 ].join('\n');
+
+const SYSTEM_PROMPT_EN = [
+  'You are a Customer Operations assistant for an online retailer. Write the reply to the customer',
+  'in English only, polite and professional.',
+  '',
+  'Strict rules:',
+  '- Use only the provided facts, rule results and policies.',
+  '- Do not invent order data, amounts, dates, names or facts.',
+  '- Make no promise that is not explicitly supported by the evidence, the rules or the RECOMMENDED',
+  '  NEXT STEP. Do not invent discounts, promotions or delivery guarantees.',
+  '- Do not change the decision that was made; only write the reply text.',
+  '- Do not output any personal data or masked placeholders (e.g. [ORDER_ID_1]).',
+  '',
+  'Format the reply as a real business email with paragraphs separated by a single blank line:',
+  '  Greeting on exactly ONE line: "Hello," (personalisation with the name is added',
+  '    automatically — do not write a name yourself)',
+  '  (blank line)',
+  '  Acknowledgement of the request',
+  '  (blank line)',
+  '  Main response: what happened and why (brief, grounded in facts/policy)',
+  '  (blank line)',
+  '  Next steps: convey the RECOMMENDED NEXT STEP',
+  '  (blank line)',
+  '  Closing ("Kind regards" / "Your Customer Service team")',
+  'Use real blank lines between paragraphs, not one continuous block of text.',
+  '',
+  '- Every reply should guide the customer toward their next step.',
+  '- For ASK_FOR_MORE_INFORMATION: ask specifically for the missing detail; do NOT promise any action.',
+  '- Mention a refund, credit or free replacement only when supported by the POLICY EXCERPTS or the',
+  '  RECOMMENDED NEXT STEP.',
+  '- If a CASE REFERENCE is given, include it in the reply.',
+  '- In "citedRefs" use only the exact reference labels from the POLICY EXCERPTS or STRUCTURED FACTS',
+  '  (e.g. "policy:1"), never section numbers such as "policy:2.2".',
+  '- Cite at least one reference actually used in "citedRefs".',
+  '',
+  'Respond only with a JSON object in exactly this format:',
+  '{"reply": "<English reply>", "citedRefs": ["<ref>", ...]}',
+].join('\n');
+
+function systemPrompt(language: Language): string {
+  return language === 'en' ? SYSTEM_PROMPT_EN : SYSTEM_PROMPT_DE;
+}
 
 export interface BuiltResponsePrompt {
   system: string;
@@ -204,16 +274,34 @@ export function buildResponsePrompt(input: ResponsePromptInput): BuiltResponsePr
   const policyLines = evidence.policyEvidence.map(
     (passage) => `- ${passage.ref}: "${passage.snippet}"`,
   );
-  const passedRules = (input.ruleResults ?? []).filter((rule) => rule.passed).map((rule) => rule.ruleId);
+  const rules = input.ruleResults ?? [];
+  const passedRules = rules.filter((rule) => rule.passed).map((rule) => rule.ruleId);
+  // Failed *informational* rules explain why an action is not possible (e.g. cancellation window
+  // passed). They are plain-language context, not promises and not citable references; the rule id
+  // is intentionally omitted so the model does not mistake it for a citation source.
+  const ruleNotes = rules
+    .filter((rule) => !rule.passed && rule.details)
+    .map((rule) => `- ${rule.details}`);
+  const nextSteps = (input.nextSteps ?? []).map((line) => `- ${line}`);
 
+  // Field labels stay in a single language for stability; the reply language is set explicitly by
+  // ANTWORTSPRACHE / REPLY LANGUAGE and enforced by the (language-specific) system prompt.
   return {
-    system: SYSTEM_PROMPT,
+    system: systemPrompt(input.language),
     user: [
+      `ANTWORTSPRACHE / REPLY LANGUAGE: ${input.language}`,
       `ENTSCHEIDUNG: ${input.decision}`,
       `INTENT: ${input.intent}`,
       `WORKFLOW: ${input.workflow}`,
+      `FALLBEZUG / CASE REFERENCE: ${input.caseReference ?? '(keiner / none)'}`,
       `FEHLENDE INFORMATIONEN: ${input.missingInformation.join(', ') || '(keine)'}`,
       `BESTANDENE REGELN: ${passedRules.join(', ') || '(keine)'}`,
+      '',
+      'EMPFOHLENER NÄCHSTER SCHRITT / RECOMMENDED NEXT STEP (authoritative — convey this):',
+      nextSteps.join('\n') || '(keiner / none)',
+      '',
+      'SACHLAGE (Hinweise, keine Belege und keine Referenzen):',
+      ruleNotes.join('\n') || '(keine)',
       '',
       'KUNDEN-E-MAIL (maskiert):',
       input.sanitizedEmail || '(kein Text)',

@@ -12,7 +12,7 @@
  */
 import { INTENTS } from '../../domain';
 
-export const INTENT_PROMPT_VERSION = 'intent-classification/v1';
+export const INTENT_PROMPT_VERSION = 'intent-classification/v2';
 export const SLOT_PROMPT_VERSION = 'slot-extraction/v1';
 
 /** The slot keys the extractor is always asked to look for (mirrors `ExtractedSlotsSchema`). */
@@ -28,9 +28,13 @@ const INTENT_DEFINITIONS = [
   '- cancellation_request: the customer wants to cancel an order.',
   '- damaged_item: the customer reports a damaged, defective or broken item.',
   '- invoice_question: the customer asks about an invoice, bill, charge or payment.',
-  '- product_availability: the customer asks whether a product is in stock or when it will be.',
+  '- product_availability: the customer asks whether a physical product or item is in stock or',
+  '  available, when it will be back, or wants to buy a specific item. Classify here even if the',
+  '  item might not be one we sell — whether it exists in the catalogue is decided later, not here.',
   "- unknown: the message cannot be confidently classified into one of the above.",
-  '- out_of_scope: a clear request this system does not handle (e.g. unrelated topics).',
+  '- out_of_scope: a request that is not about an order, invoice or buying a product at all — e.g. a',
+  '  job or careers enquiry, a supplier / partnership / wholesale (B2B) request, or an unrelated',
+  '  service we do not sell such as lessons, courses, classes or training.',
 ].join('\n');
 
 const INTENT_SYSTEM = [

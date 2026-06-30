@@ -1,0 +1,307 @@
+/**
+ * Customer Guidance — deterministic, explainable framing for every decided case (ADR-014).
+ *
+ * Two responsibilities, both deterministic (no LLM, ADR-001):
+ *
+ *  1. `buildDecisionGuidance` produces the operator-facing "why this decision / what happens next"
+ *     summary the Workbench renders next to the customer reply. It is derived purely from the
+ *     decided case, so it is always present and always consistent with the decision — even when
+ *     the LLM draft is absent.
+ *
+ *  2. `fallbackCustomerReply` produces a safe German customer-facing message for the cases where no
+ *     LLM draft exists: HUMAN_ESCALATION (no LLM call, by ADR-011) and any AUTO_REPLY/ASK whose
+ *     draft failed compliance. This satisfies the v2 goal that the customer is *always* guided —
+ *     what happened, why, what happens next, what to do — without weakening the escalation path or
+ *     the compliance gate.
+ *
+ * The four-part structure mirrors the customer-guidance contract the LLM prompt is held to, so the
+ * deterministic and generated replies read consistently.
+ */
+import { Decision, Workflow } from '../../domain';
+import type { BusinessRuleResult, ReasonCode, StructuredSource } from '../../types';
+import type { EscalationCategory } from '../decision/escalation-triggers';
+import type { OutOfScopeCategory } from '../decision/out-of-scope';
+import { buildNextSteps } from './next-steps';
+import type { Language } from './language';
+
+/** The four-part guidance shown in the Workbench, derived deterministically from the decision. */
+export interface DecisionGuidance {
+  whatHappened: string;
+  why: string;
+  whatNext: string;
+  whatToDo: string;
+}
+
+export interface GuidanceInput {
+  decision: Decision;
+  workflow: Workflow;
+  reasonCode: ReasonCode;
+  /** Required customer fields still missing (drives the "what to do" for ASK). */
+  missingInformation: string[];
+  /** Simulated case reference, when a case was opened. */
+  caseReference?: string;
+  /** The escalation category, when an explicit human-only signal triggered. */
+  escalationCategory?: EscalationCategory;
+  /** Out-of-scope subtype, when the decision is OUT_OF_SCOPE (selects the redirect). */
+  outOfScopeCategory?: OutOfScopeCategory;
+  /** Product-resolution status (product-availability workflow). */
+  productResolution?: 'resolved' | 'ambiguous' | 'underspecified' | 'not_found';
+  /** The product name the customer asked about (for not-found / clarification replies). */
+  productQuery?: string;
+  /** Candidate product names when the product request was ambiguous. */
+  productCandidates?: string[];
+  /** Whether the eligible (vs. ineligible) branch of an action workflow was taken. */
+  actionEligible?: boolean;
+  /** Customer-facing language for the deterministic reply (operator panel stays English). */
+  language?: Language;
+  /** Structured facts, so the deterministic reply can ground its next step (e.g. product link). */
+  structuredFacts?: StructuredSource[];
+  /** Rule results, carried for parity with the LLM grounding context. */
+  ruleResults?: BusinessRuleResult[];
+}
+
+const WORKFLOW_LABEL: Record<Workflow, string> = {
+  [Workflow.CANCELLATION]: 'cancellation request',
+  [Workflow.DAMAGED_ITEM]: 'damaged-item report',
+  [Workflow.INVOICE]: 'invoice question',
+  [Workflow.PRODUCT_AVAILABILITY]: 'product availability question',
+  [Workflow.UNSUPPORTED]: 'request',
+};
+
+const ESCALATION_REASON: Record<EscalationCategory, string> = {
+  dispute: 'the message raises a formal dispute, which policy reserves for a specialist',
+  chargeback: 'the message concerns a payment chargeback, which Finance must handle',
+  goodwill: 'the message asks for a goodwill exception, which requires manual approval',
+  fraud: 'the message indicates suspected fraud, which must be reviewed by a specialist',
+  legal: 'the message raises a legal matter, which must be reviewed by a specialist',
+};
+
+/** Build the deterministic, operator-facing decision guidance for the Workbench. */
+export function buildDecisionGuidance(input: GuidanceInput): DecisionGuidance {
+  const label = WORKFLOW_LABEL[input.workflow] ?? 'request';
+
+  if (input.decision === Decision.HUMAN_ESCALATION) {
+    const why = input.escalationCategory
+      ? ESCALATION_REASON[input.escalationCategory]
+      : input.workflow === Workflow.UNSUPPORTED
+        ? 'the request is outside the workflows this system supports'
+        : 'the case could not be grounded safely for an automatic answer';
+    return {
+      whatHappened: `The ${label} was routed to a human agent.`,
+      why: `Routed for manual review because ${why}.`,
+      whatNext: 'A customer-service agent will review the case and follow up directly.',
+      whatToDo: 'No action is needed from the customer right now; an agent will be in touch.',
+    };
+  }
+
+  if (input.decision === Decision.OUT_OF_SCOPE) {
+    const channel =
+      input.outOfScopeCategory === 'career'
+        ? 'the careers page'
+        : input.outOfScopeCategory === 'b2b'
+          ? 'the business-contact page'
+          : 'the customer-service scope explanation (no redirect)';
+    return {
+      whatHappened: 'The request was understood but is outside customer-service scope; it was auto-closed.',
+      why: `The request is a '${input.outOfScopeCategory ?? 'other'}' enquiry, not a supported customer-service workflow.`,
+      whatNext: `No human agent is involved; the customer was pointed to ${channel}.`,
+      whatToDo: 'The customer should use the channel named in the reply, if one applies.',
+    };
+  }
+
+  if (input.decision === Decision.ASK_FOR_MORE_INFORMATION) {
+    const missing = input.missingInformation.join(', ');
+    if (input.productResolution === 'ambiguous' || input.productResolution === 'underspecified') {
+      return {
+        whatHappened: 'The availability question was received and a reply asking the customer to narrow the product was prepared.',
+        why:
+          input.productResolution === 'ambiguous'
+            ? 'Several catalogue products match the request, so the customer is asked which one.'
+            : 'The request names a generic product category, so the customer is asked for the specific product.',
+        whatNext: 'The case is answered automatically once the exact product (name or SKU) arrives.',
+        whatToDo: 'The customer should reply with the exact product name or SKU.',
+      };
+    }
+    return {
+      whatHappened: `The ${label} was received and a reply asking for more detail was prepared.`,
+      why:
+        input.reasonCode === 'STRUCTURED_DATA_MISSING'
+          ? 'The referenced record could not be located, so the customer is asked to confirm it.'
+          : input.reasonCode === 'UNKNOWN_INTENT'
+            ? 'The request was unclear, so the customer is asked to clarify what they need.'
+            : 'A required detail was missing, so the customer is asked to provide it.',
+      whatNext: 'The case stays open and is processed automatically once the detail arrives.',
+      whatToDo: missing
+        ? `The customer should reply with: ${missing}.`
+        : 'The customer should reply with the requested detail.',
+    };
+  }
+
+  // AUTO_REPLY
+  const caseLine = input.caseReference ? ` Case ${input.caseReference} was opened.` : '';
+  switch (input.workflow) {
+    case Workflow.CANCELLATION:
+      return input.actionEligible
+        ? {
+            whatHappened: `The order cancellation was confirmed automatically.${caseLine}`,
+            why: 'The order was still eligible for cancellation under policy.',
+            whatNext: 'No charge is captured / any pending charge is voided; a refund follows if already paid.',
+            whatToDo: 'Nothing further is required from the customer.',
+          }
+        : {
+            whatHappened: 'The order could no longer be cancelled; the customer was told why and offered the return route.',
+            why: 'Policy allows self-service cancellation only while the order is still processing and within the window.',
+            whatNext: 'The order proceeds as normal; once delivered it can be returned under the return policy.',
+            whatToDo: 'The customer can start a return after delivery if they no longer want the item.',
+          };
+    case Workflow.DAMAGED_ITEM:
+      return {
+        whatHappened: `The damage report was acknowledged and a return/replacement case was opened.${caseLine}`,
+        why: 'Delivered orders are eligible for a damage claim under policy.',
+        whatNext: 'The case is reviewed once the requested evidence is received.',
+        whatToDo: 'The customer should send photos of the damage and the packaging as described in the reply.',
+      };
+    case Workflow.INVOICE:
+      return {
+        whatHappened: 'The invoice question was answered automatically from the billing record.',
+        why: 'The invoice was located and the question is answerable from stored billing data and policy.',
+        whatNext: 'No further processing is required for the question itself.',
+        whatToDo: 'Nothing further is required from the customer.',
+      };
+    case Workflow.PRODUCT_AVAILABILITY:
+      return input.productResolution === 'not_found'
+        ? {
+            whatHappened: 'The availability question was answered automatically: the product is not in the catalogue.',
+            why: 'The product name was understood and retrieval ran, but no such product exists in the catalogue.',
+            whatNext: 'No human handling is needed; the customer was invited to send the exact name or SKU.',
+            whatToDo: 'The customer can resend the exact product name or SKU if they meant a different item.',
+          }
+        : {
+            whatHappened: 'The availability question was answered automatically from inventory data.',
+            why: 'The product was found in the catalogue, so availability could be reported directly.',
+            whatNext: 'The customer can proceed to order while stock lasts.',
+            whatToDo: 'The customer can place or complete their order if they wish to buy.',
+          };
+    default:
+      return {
+        whatHappened: 'The request was answered automatically.',
+        why: 'All deterministic checks passed.',
+        whatNext: 'No further processing is required.',
+        whatToDo: 'Nothing further is required from the customer.',
+      };
+  }
+}
+
+/** Localised greeting / acknowledgement / closing for the deterministic email. */
+const LETTER_PARTS: Record<Language, { greeting: string; ack: string; closing: string[] }> = {
+  de: {
+    greeting: 'Guten Tag,',
+    ack: 'vielen Dank für Ihre Nachricht.',
+    closing: ['Freundliche Grüße', 'Ihr Kundenservice'],
+  },
+  en: {
+    greeting: 'Hello,',
+    ack: 'thank you for your message.',
+    closing: ['Kind regards', 'Your Customer Service team'],
+  },
+};
+
+/** Assemble a real-looking business email: greeting · acknowledgement · body · closing. */
+function letter(language: Language, bodyParagraphs: string[]): string {
+  const parts = LETTER_PARTS[language];
+  const blocks = [parts.greeting, parts.ack, ...bodyParagraphs, parts.closing.join('\n')];
+  return blocks.filter((block) => block.length > 0).join('\n\n');
+}
+
+/**
+ * A safe customer-facing reply, in the customer's language, for cases with no compliant LLM draft
+ * (escalation, out-of-scope, or a draft that failed the compliance gate). Deterministic and
+ * grounded only in facts this code controls; it promises no specific monetary outcome
+ * (customer-service policy §6). It conveys the same grounded next step as the LLM path by reusing
+ * `buildNextSteps`, and is formatted as a normal business email (ADR-014).
+ */
+export function fallbackCustomerReply(input: GuidanceInput): string {
+  const language: Language = input.language ?? 'de';
+  const caseLine = input.caseReference
+    ? language === 'de'
+      ? `Ihre Fallnummer lautet ${input.caseReference}.`
+      : `Your case reference is ${input.caseReference}.`
+    : '';
+
+  const nextSteps = buildNextSteps({
+    decision: input.decision,
+    workflow: input.workflow,
+    language,
+    reasonCode: input.reasonCode,
+    structuredFacts: input.structuredFacts ?? [],
+    ruleResults: input.ruleResults,
+    missingInformation: input.missingInformation,
+    caseReference: input.caseReference,
+    actionEligible: input.actionEligible,
+    escalationCategory: input.escalationCategory,
+    outOfScopeCategory: input.outOfScopeCategory,
+    productResolution: input.productResolution,
+    productQuery: input.productQuery,
+    productCandidates: input.productCandidates,
+  });
+
+  const body = [...nextSteps];
+  // Cancellation/escalation references are quoted inline by `buildNextSteps`/damaged; otherwise
+  // append the case line when one exists and was not already mentioned.
+  if (caseLine && !body.some((line) => input.caseReference && line.includes(input.caseReference))) {
+    body.push(caseLine);
+  }
+  if (body.length === 0) {
+    body.push(
+      language === 'de'
+        ? 'Wir prüfen Ihr Anliegen und melden uns in Kürze bei Ihnen.'
+        : 'We are reviewing your request and will get back to you shortly.',
+    );
+  }
+  return letter(language, body);
+}
+
+/** The first available customer name in the deterministically-retrieved facts, or undefined. */
+export function customerNameFromFacts(facts: StructuredSource[]): string | undefined {
+  for (const fact of facts) {
+    const name = (fact.data as Record<string, unknown>).customerName;
+    if (typeof name === 'string' && name.trim().length > 0) return name.trim();
+  }
+  return undefined;
+}
+
+const GREETING_LINE = /^(sehr geehrte|guten tag|hallo|hi\b|hello|dear\b|liebe[rs]?)/i;
+
+/**
+ * Personalise the greeting of a finished customer message, in the customer's language. If the
+ * structured business data yielded a name we address the customer by their full name in a
+ * gender-neutral form ("Guten Tag Sofia Martinez," / "Hello Sofia Martinez,"); otherwise the
+ * generic greeting is kept ("Guten Tag," / "Hello,").
+ *
+ * This is **deterministic post-processing applied after Compliance Validation** — the name is the
+ * customer's own and is never sent to the LLM (it stays out of the prompt, like the order id), so
+ * the PII strategy (ADR-004) is unchanged; we only restore the customer's own name in their own
+ * reply. The first line is replaced when it is a greeting, otherwise a greeting is prepended.
+ */
+export function personalizeGreeting(
+  message: string,
+  language: Language,
+  customerName?: string,
+): string {
+  const name = customerName?.trim();
+  const greeting = name
+    ? language === 'en'
+      ? `Hello ${name},`
+      : `Guten Tag ${name},`
+    : language === 'en'
+      ? 'Hello,'
+      : 'Guten Tag,';
+
+  const newlineIndex = message.indexOf('\n');
+  const firstLine = (newlineIndex === -1 ? message : message.slice(0, newlineIndex)).trim();
+  if (GREETING_LINE.test(firstLine)) {
+    const rest = newlineIndex === -1 ? '' : message.slice(newlineIndex);
+    return greeting + rest;
+  }
+  return `${greeting}\n\n${message}`;
+}

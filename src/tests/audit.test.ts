@@ -103,7 +103,7 @@ function sampleDecisionEngine(decision: Decision = Decision.AUTO_REPLY): Decisio
 function sampleResponse(delivered = true): GeneratedResponse {
   return {
     language: 'de',
-    promptVersion: 'response-generation/v1',
+    promptVersion: 'response-generation/v2',
     decision: sampleDecisionEngine().decision,
     draft: delivered ? 'Guten Tag, das Produkt ist verfügbar.' : null,
     delivered,
@@ -114,7 +114,7 @@ function sampleResponse(delivered = true): GeneratedResponse {
         { name: 'grounded_citations', passed: delivered },
         { name: 'no_unsupported_promises', passed: true },
         { name: 'no_pii_leakage', passed: true },
-        { name: 'german_language', passed: true },
+        { name: 'language_match', passed: true },
         { name: 'matches_decision', passed: delivered },
       ],
     },

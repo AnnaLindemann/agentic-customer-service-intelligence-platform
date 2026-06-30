@@ -19,6 +19,9 @@ export {
 // Structured Data Retrieval.
 export {
   retrieveStructuredFacts,
+  detectProductNameInText,
+  resolveProduct,
+  type ProductResolution,
   type StructuredQuery,
   type StructuredRetrievalOptions,
   type StructuredRetrievalResult,

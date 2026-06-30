@@ -57,13 +57,13 @@ export const CitedEvidenceSchema = z.object({
  */
 export const GeneratedResponseSchema = z.object({
   caseId: z.string().optional(),
-  /** All customer-facing text is German. */
-  language: z.literal('de'),
+  /** The customer-facing language, detected from the email (German or English). */
+  language: z.enum(['de', 'en']),
   /** Exact response prompt template associated with this stage outcome. */
-  promptVersion: z.literal('response-generation/v1'),
+  promptVersion: z.literal('response-generation/v2'),
   /** The Decision Gate outcome, carried through unchanged. */
   decision: DecisionSchema,
-  /** The German reply when delivered, otherwise null. */
+  /** The customer reply in the detected language when delivered, otherwise null. */
   draft: z.string().nullable(),
   /** True only when a compliant draft is being returned to the customer. */
   delivered: z.boolean(),
