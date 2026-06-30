@@ -104,6 +104,7 @@ function sampleResponse(delivered = true): GeneratedResponse {
   return {
     language: 'de',
     promptVersion: 'response-generation/v2',
+    generationMode: delivered ? 'LLM' : 'NONE',
     decision: sampleDecisionEngine().decision,
     draft: delivered ? 'Guten Tag, das Produkt ist verfügbar.' : null,
     delivered,
@@ -264,6 +265,7 @@ test('decision metadata is preserved exactly', () => {
   assert.ok(record.decision.reasonCodes.includes(ReasonCode.AUTO_REPLY_ALLOWED));
   assert.ok(record.decision.reasonCodes.includes(ReasonCode.DATA_SUFFICIENT));
   assert.equal(record.compliance.compliancePassed, true);
+  assert.equal(record.compliance.generationMode, 'LLM');
   assert.equal(record.compliance.citedEvidenceCount, 1);
   assert.equal(record.compliance.groundingStatus, 'grounded');
 });

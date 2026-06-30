@@ -28,6 +28,9 @@ decisions, prompts, compliance, retries, or provider behaviour.
 - `npm run evaluate:system`, machine-readable artifacts, a generated Markdown report, and a manual
   review checklist.
 - Unit tests for dataset coverage, successful scoring, regression detection, and report contents.
+- Final stabilization added canonical deterministic fallbacks, the deterministic 30-day
+  damaged-item exception, non-committal damaged-item guidance, and explicit simulated-operation
+  wording across responses and the workbench.
 
 ### Architectural Notes
 

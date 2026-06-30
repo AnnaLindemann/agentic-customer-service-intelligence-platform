@@ -1,120 +1,173 @@
-# Explainable AI Customer Email Decision Engine
+# Explainable AI Customer Service Decision Engine
 
-An AI-powered system that processes incoming customer service emails through a deterministic
-pipeline and produces a **grounded draft response** with a full **audit trace**.
+An interview prototype demonstrating how routine customer-service requests can be automated safely by combining LLM reasoning with deterministic business logic.
 
-The project is designed as a production-oriented AI system rather than a chatbot demo.
-It uses a hybrid architecture: LLMs handle language, deterministic rules handle decisions.
-
-The system aims to automate supported customer service emails while escalating only cases
-that are unsafe, unsupported or insufficiently grounded. Supported low-risk requests are
-processed automatically; human review is reserved for exceptions.
+The objective is not to build a production-ready customer support platform, but to demonstrate an architecture that maximizes safe automation while keeping human involvement to genuine exceptions ("Human by Exception").
 
 > **LLMs interpret. Rules decide.**
 
-See [docs/design-principles.md](docs/design-principles.md) for the full engineering philosophy.
+---
+
+# Business Goal
+
+Instead of treating every customer email as a chatbot conversation, the system processes each request through a controlled decision pipeline.
+
+The LLM is responsible for understanding language, while all customer-impacting business decisions remain deterministic, explainable and policy-driven.
+
+Supported low-risk requests are processed automatically. Ambiguous requests receive a clarification,
+understood out-of-scope requests are redirected, and genuine policy or safety exceptions are escalated.
 
 ---
 
-## What It Does
+# System Architecture
 
-For each incoming customer email, the system:
+The processing pipeline consists of:
 
-1. Removes personal data before any LLM call (PII Sanitizer).
-2. Identifies the customer and the request (Slot Extraction + Structured Data Retrieval).
-3. Understands intent and validates it is in scope.
-4. Retrieves facts from internal business data and policy PDFs (hybrid retrieval).
-5. Checks data sufficiency and company rules deterministically.
-6. Decides whether to draft a reply or escalate to a human (Decision Gate).
-7. Generates a grounded draft response, validated for compliance.
-8. Records every step and reason code in an audit trace.
+Customer Email
 
-The output is a single structured JSON object: the draft (or an escalation), the supporting
-evidence, the decisions taken, and the reasons for them.
+→ PII Sanitization
 
----
+→ Intent Classification
 
-## Current Status
+→ Slot Extraction
 
-**Phases 1–8 complete. Phase 9 — System Evaluation implemented and awaiting review.**
+→ Hybrid Retrieval (Business Data + Policy PDFs)
 
-The complete pipeline, browser workbench, and offline synthetic evaluation harness are runnable.
+→ Business Rule Engine
 
----
+→ Decision Gate
 
-## Architecture Principles
+→ Response Generation
 
-The project follows the principles in [docs/design-principles.md](docs/design-principles.md):
+→ Compliance Validation
 
-- LLMs interpret; deterministic rules decide.
-- Agent responsibilities do not require LLM agents.
-- Every decision is explainable and grounded in evidence.
-- Safety is more important than automation; human escalation is a successful outcome.
-- Human by exception: supported low-risk requests are auto-replied; escalation is the fallback.
+→ Audit Trace
 
-See [docs/architecture.md](docs/architecture.md) for the processing pipeline.
+→ Customer Response
+
+The browser workbench visualizes every stage of this pipeline to make the system's reasoning transparent.
 
 ---
 
-## Documentation
+# Responsibilities
 
-| Document | Purpose |
-|----------|---------|
-| design-principles.md | Engineering philosophy (single source of truth) |
-| architecture.md | System architecture and processing pipeline |
-| roadmap.md | Implementation phases |
-| engineering-workflow.md | Development workflow |
-| ai-development-workflow.md | Rules for AI Coding Assistants |
-| progress-log.md | Phase-by-phase record of completed work |
-| decisions.md | Architecture Decision Records (ADR) |
-| backlog.md | Future improvements (out of MVP scope) |
-| evaluation.md | Phase 9 dataset, metrics and evaluation workflow |
-| evaluation-report.md | Latest generated system-evaluation report |
+## LLM
 
----
+* Intent classification
+* Information extraction
+* Natural language response generation
 
-## Development Workflow
+## Deterministic Logic
 
-Development follows a strict, phase-by-phase process. No implementation skips roadmap phases.
-See [docs/engineering-workflow.md](docs/engineering-workflow.md) and
-[docs/ai-development-workflow.md](docs/ai-development-workflow.md).
+* PII protection
+* Scope validation
+* Hybrid retrieval orchestration
+* Business rule evaluation
+* Decision Gate
+* Compliance validation
+* Audit trace
+* Human-by-Exception routing
+
+This separation ensures that language understanding is probabilistic, while business decisions remain deterministic and explainable.
 
 ---
 
-## Tech Stack (planned)
+# Evaluation
 
-**Backend:** Node.js, TypeScript, Express
-**Validation:** Zod (all LLM outputs are schema-validated)
-**AI:** External LLM API, structured JSON output, prompt versioning
-**Retrieval:** Local JSON business data; lightweight semantic PDF RAG over a local JSON
-vector index with cosine similarity, using a small local sentence-embedding model
-(`@huggingface/transformers`, MiniLM) — no external embedding API or vector database
-(see [ADR-008](docs/decisions.md))
-**PDF Processing:** dependency-free reader for the generated policy PDFs
-**Infrastructure:** Docker, Docker Compose, Oracle Cloud Always Free
-**Observability:** Audit trace, reason codes, prompt/version metadata, decision path logging
+The project includes an offline evaluation framework that executes synthetic customer emails through the complete prototype pipeline.
 
----
+The evaluation measures:
 
-## Explicitly Out of Scope for MVP
+* intent accuracy
+* decision accuracy
+* grounding
+* hallucination safety
+* safe escalation
+* response quality
+* latency
+* estimated LLM cost
 
-- PostgreSQL
-- LangGraph
-- Self-hosted LangFuse
-- External vector databases
-- CRM integration
-- Real email inbox integration
-- Authentication
-- Autonomous multi-agent loops
+Evaluation is read-only and never affects runtime behaviour.
 
 ---
 
-## Future Work (Not in MVP)
+# Running the Project
 
-The following are deferred to the backlog and are **not** part of the MVP:
+Clone the repository.
 
-- Conversation Intelligence
-- Business Insights Extraction
-- Escalation review interface and evaluation dashboard
+Create a .env file and configure the required environment variables:
+GROQ_API_KEY=your_api_key
+LLM_MODEL=openai/gpt-oss-20b
 
-See [docs/backlog.md](docs/backlog.md).
+Build the local retrieval index:
+npm install
+npm run build:index
+Start the application:
+docker compose up --build
+
+Open the browser workbench and submit one of the provided demo scenarios or your own customer email.
+
+Note: The first request may take up to approximately one minute because the application runs on a resource-constrained Oracle Cloud instance and needs to initialize the retrieval model. Subsequent requests are typically much faster.
+---
+
+# Known Limitations
+
+This repository intentionally contains an interview prototype.
+
+To keep the scope focused:
+
+* synthetic business data is used;
+* no relational database is included;
+* no external vector database is used;
+* business operations (for example order updates) are simulated;
+* the frontend is a lightweight demonstration workbench;
+* evaluation is based on synthetic scenarios;
+* external LLM availability may affect evaluation results.
+
+---
+
+# Production Considerations
+
+For a production implementation I would additionally introduce:
+
+* authentication and authorization;
+* CRM / ERP / ticketing integrations;
+* persistent relational database;
+* production-grade vector database;
+* real email ingestion;
+* human review queue and case assignment;
+* monitoring and observability;
+* retry infrastructure;
+* role-based access control;
+* production evaluation datasets built from historical traffic;
+* continuous model evaluation and comparison.
+
+These capabilities are intentionally outside the scope of this prototype.
+
+The workbench may generate simulated case references and policy decisions, but it never cancels an
+order, issues a refund, creates a CRM ticket, or mutates another operational system.
+
+---
+
+# Documentation
+
+Additional documentation is available in the `docs/` directory:
+
+* Architecture
+* Design Principles
+* Architecture Decision Records (ADR)
+* Evaluation Framework
+* Engineering Workflow
+* Progress Log
+
+---
+
+# Project Philosophy
+
+The main objective of this prototype is not to demonstrate the use of an LLM.
+
+It is to demonstrate how AI can be integrated into customer operations in a way that is explainable, measurable and safe.
+
+Routine work should be automated wherever possible.
+
+Human expertise should be reserved for genuine exceptions.

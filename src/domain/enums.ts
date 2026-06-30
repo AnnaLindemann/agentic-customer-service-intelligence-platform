@@ -86,6 +86,8 @@ export const ReasonCode = {
   RULE_PASSED: 'RULE_PASSED',
   /** Business rules produced a conflicting or disallowed result. */
   BUSINESS_RULE_CONFLICT: 'BUSINESS_RULE_CONFLICT',
+  /** A damaged-item claim was submitted more than 30 days after delivery. */
+  DAMAGE_CLAIM_WINDOW_EXPIRED: 'DAMAGE_CLAIM_WINDOW_EXPIRED',
   /** An LLM stage returned output that failed schema validation. */
   INVALID_LLM_OUTPUT: 'INVALID_LLM_OUTPUT',
   /** Personal data was detected by the PII Sanitizer. */

@@ -1,5 +1,9 @@
 # Design Proposal — Human by Exception v2
 
+> Historical proposal. ADR-014 and the current implementation are authoritative. Final
+> stabilization added the blocking 30-day damaged-item exception and removed wording that implied
+> external operational actions were executed.
+
 **Status:** Draft for review (no code changed, no ADR committed)
 **Author:** prepared for the project owner's review
 **Scope:** evolve the prototype from an *AI Email Router* into an *AI Customer Operations Platform* without altering the existing architecture (deterministic rules, explainability, auditability, observability, provider abstraction, fixed pipeline order).

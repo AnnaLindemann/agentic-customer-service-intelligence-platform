@@ -38,6 +38,7 @@ function passingResult(): WorkbenchResult {
     response: {
       language: 'de',
       promptVersion: 'response-generation/v2',
+      generationMode: 'LLM',
       decision: {
         decision: Decision.AUTO_REPLY,
         riskLevel: 'low',
@@ -86,6 +87,7 @@ function passingResult(): WorkbenchResult {
       decision: {} as WorkbenchResult['audit']['decision'],
       compliance: {
         compliancePassed: true,
+        generationMode: 'LLM',
         citedEvidenceCount: 1,
         failedChecks: [],
         groundingStatus: 'grounded',
@@ -114,6 +116,9 @@ test('the synthetic dataset is schema-valid and covers all decision outcomes', (
   assert.ok(decisions.has(Decision.ASK_FOR_MORE_INFORMATION));
   assert.ok(decisions.has(Decision.HUMAN_ESCALATION));
   assert.ok(decisions.has(Decision.OUT_OF_SCOPE));
+  const expiredDamage = dataset.cases.find((item) => item.id === 'damaged-item-window-expired');
+  assert.equal(expiredDamage?.expected.decision, Decision.HUMAN_ESCALATION);
+  assert.equal(expiredDamage?.expected.reasonCode, 'DAMAGE_CLAIM_WINDOW_EXPIRED');
 });
 
 test('deterministic scoring passes a matching grounded case', () => {

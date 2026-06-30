@@ -9,9 +9,9 @@
  * Flow:
  *   - HUMAN_ESCALATION  → no LLM call; no draft (a human handles the case).
  *   - AUTO_REPLY / ASK_FOR_MORE_INFORMATION → build a PII-safe prompt, generate JSON (one retry
- *     on invalid JSON inside the LLM layer), then run Compliance Validation. A draft is
- *     delivered only when it passes; otherwise the safe fallback is no draft (human handling).
- *   - Any LLM failure → safe fallback (no draft), never a raw or unchecked message.
+ *     on invalid JSON inside the LLM layer), then run Compliance Validation.
+ *   - LLM failure → validate the supplied deterministic fallback through the same compliance gate.
+ *     It becomes the canonical delivered response only when safe; otherwise no response is delivered.
  *
  * The LLM client is injected so the stage stays provider-neutral and unit-testable.
  */
@@ -32,6 +32,7 @@ import { LlmDraftSchema } from '../../schemas';
 import {
   buildResponsePrompt,
   collectStructuredPiiValues,
+  prepareResponseEvidence,
   RESPONSE_PROMPT_VERSION,
 } from './prompt';
 import { validateCompliance } from './compliance-validation';
@@ -52,12 +53,14 @@ export interface ResponseGenerationInput {
   policyEvidence: RetrievedSource[];
   /** Passed/failed deterministic rules used only as grounding context; never changed here. */
   ruleResults?: BusinessRuleResult[];
-  /** Simulated case reference (ADR-014) to quote in the reply, when a case was opened. */
+  /** Simulated reference (ADR-014) to quote without implying an external ticket was created. */
   caseReference?: string;
   /** Customer-facing language detected from the email (German or English). Defaults to German. */
   language?: Language;
   /** Deterministic, grounded next-step lines the draft should convey. */
   nextSteps?: string[];
+  /** Prebuilt deterministic customer message used only when LLM generation fails. */
+  deterministicFallbackDraft?: string;
   /** Raw PII values detected in the email; used by the compliance leak check. */
   detectedPiiValues?: string[];
 }
@@ -83,6 +86,49 @@ function resolveCitedEvidence(
     }
   }
   return evidence;
+}
+
+/** Validate and package the prebuilt deterministic fallback as the canonical response. */
+function deterministicFallbackResponse(
+  input: ResponseGenerationInput,
+  language: Language,
+): GeneratedResponse | undefined {
+  const draft = input.deterministicFallbackDraft?.trim();
+  if (!draft) return undefined;
+
+  const evidence = prepareResponseEvidence(input.structuredFacts, input.policyEvidence);
+  const citedRefs = [
+    ...evidence.structuredFacts.map((fact) => fact.ref),
+    ...evidence.policyEvidence.map((passage) => passage.ref),
+  ];
+  const compliance = validateCompliance({
+    decision: input.decision.decision,
+    workflow: input.workflow,
+    draft,
+    citedRefs,
+    structuredFacts: evidence.structuredFacts,
+    policyEvidence: evidence.policyEvidence,
+    ruleResults: input.ruleResults,
+    piiValues: [
+      ...(input.detectedPiiValues ?? []),
+      ...collectStructuredPiiValues(input.structuredFacts),
+    ],
+    language,
+  });
+  const delivered = compliance.passed;
+  return GeneratedResponseSchema.parse({
+    caseId: input.caseId,
+    language,
+    promptVersion: RESPONSE_PROMPT_VERSION,
+    generationMode: 'DETERMINISTIC_FALLBACK',
+    decision: input.decision,
+    draft: delivered ? draft : null,
+    delivered,
+    citedEvidence: delivered
+      ? resolveCitedEvidence(citedRefs, evidence.structuredFacts, evidence.policyEvidence)
+      : [],
+    compliance,
+  });
 }
 
 /**
@@ -112,6 +158,7 @@ export async function runResponseGeneration(
       caseId: input.caseId,
       language,
       promptVersion: RESPONSE_PROMPT_VERSION,
+      generationMode: 'NONE',
       decision,
       draft: null,
       delivered: false,
@@ -123,7 +170,7 @@ export async function runResponseGeneration(
     });
   }
 
-  // Generate the draft. An LLM failure becomes a safe fallback (no draft → human handling).
+  // Generate the draft. On failure, a deterministic fallback must pass compliance before delivery.
   let reply: string;
   let citedRefs: string[];
   let promptEvidence: PreparedResponseEvidence;
@@ -155,14 +202,15 @@ export async function runResponseGeneration(
     citedRefs = result.data.citedRefs;
     promptEvidence = prompt.evidence;
   } catch (error) {
-    const reasonCode =
-      error instanceof LlmError && error.kind === 'invalid_output'
-        ? ReasonCode.INVALID_LLM_OUTPUT
-        : ReasonCode.ESCALATION_REQUIRED;
+    const fallback = deterministicFallbackResponse(input, language);
+    if (fallback) return fallback;
+
+    const reasonCode = ReasonCode.INVALID_LLM_OUTPUT;
     return GeneratedResponseSchema.parse({
       caseId: input.caseId,
       language,
       promptVersion: RESPONSE_PROMPT_VERSION,
+      generationMode: 'NONE',
       decision,
       draft: null,
       delivered: false,
@@ -174,7 +222,7 @@ export async function runResponseGeneration(
           {
             name: 'llm_generation',
             passed: false,
-            detail: 'Response generation failed; routed to human handling.',
+            detail: `Response generation failed (${error instanceof LlmError ? error.kind : 'unknown'}); no safe fallback response was available.`,
           },
         ],
       },
@@ -188,6 +236,7 @@ export async function runResponseGeneration(
   ];
   const compliance = validateCompliance({
     decision: decision.decision,
+    workflow: input.workflow,
     draft: reply,
     citedRefs,
     structuredFacts: promptEvidence.structuredFacts,
@@ -197,13 +246,19 @@ export async function runResponseGeneration(
     language,
   });
 
+  if (!compliance.passed) {
+    const fallback = deterministicFallbackResponse(input, language);
+    if (fallback) return fallback;
+  }
+
   const delivered = compliance.passed;
   return GeneratedResponseSchema.parse({
     caseId: input.caseId,
     language,
     promptVersion: RESPONSE_PROMPT_VERSION,
+    generationMode: 'LLM',
     decision,
-    // Only a compliant draft is delivered; otherwise the safe fallback is no draft.
+    // Only a compliant LLM draft is delivered.
     draft: delivered ? reply : null,
     delivered,
     citedEvidence: delivered

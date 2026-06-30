@@ -48,7 +48,7 @@
         "passiert ist. Können Sie mir den aktuellen Stand erläutern?\n\nViele Grüße",
     },
     {
-      label: "Cancellation (eligible) → auto-confirm",
+      label: "Cancellation (eligible) → simulated policy decision",
       email:
         "Hallo,\n\nbitte stornieren Sie meine Bestellung 10004. Ich habe sie versehentlich " +
         "aufgegeben.\n\nVielen Dank",
@@ -60,7 +60,7 @@
         "Viele Grüße",
     },
     {
-      label: "Damaged item (delivered) → auto intake + evidence request",
+      label: "Damaged item (within 30 days) → simulated intake + evidence request",
       email:
         "Hallo,\n\nmeine Bestellung 10003 ist angekommen, aber die Granite Hiking Boots sind " +
         "beschädigt – die Sohle ist eingerissen. Was kann ich tun?\n\nDanke und viele Grüße",
@@ -245,17 +245,17 @@
       `<span>${esc(decisionLabel(decision))}</span>` +
       `<span class="muted" style="font-weight:500"> · ${esc(titleCase(r.workflow))}</span>`;
 
-    // Always show a customer-facing reply: the compliant AI draft when delivered, otherwise the
-    // deterministic, policy-safe message (escalation acknowledgement or "we are reviewing").
-    const aiDraft = Boolean(r.response.draft);
-    els.responseDraft.className = aiDraft ? "draft" : "draft escalation";
-    els.responseDraft.textContent =
-      r.customerMessage || "No customer reply was produced for this case.";
+    // The canonical response object is the only source of customer-visible text.
+    const delivered = Boolean(r.response.delivered && r.response.draft);
+    els.responseDraft.className = delivered ? "draft" : "draft escalation";
+    els.responseDraft.textContent = delivered
+      ? r.response.draft
+      : "No customer response was delivered for this case.";
 
     // Deterministic "why this decision / what happens next" guidance.
     const g = r.guidance || {};
     const caseRow = r.caseReference
-      ? `<dt>Case</dt><dd>${badge(esc(r.caseReference), "blue")}</dd>`
+      ? `<dt>Simulated reference</dt><dd>${badge(esc(r.caseReference), "blue")}</dd>`
       : "";
     els.responseGuidance.innerHTML =
       `<p class="subhead">Why this outcome</p>` +
@@ -269,7 +269,11 @@
 
     const meta = [];
     meta.push(
-      aiDraft ? badge("AI-generated reply", "green") : badge("Deterministic safe reply", "gray"),
+      r.response.generationMode === "LLM"
+        ? badge("AI-generated reply", "green")
+        : r.response.generationMode === "DETERMINISTIC_FALLBACK"
+          ? badge("Deterministic fallback", "blue")
+          : badge("No response delivered", "gray"),
     );
     meta.push(badge(`Language: ${r.response.language}`, "gray"));
     if (r.escalation && r.escalation.triggered) {

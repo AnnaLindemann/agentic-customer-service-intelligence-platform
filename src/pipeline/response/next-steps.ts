@@ -144,12 +144,12 @@ export function buildNextSteps(input: NextStepInput): string[] {
         return input.actionEligible
           ? de
             ? [
-                'Ihre Bestellung wurde storniert. Es wird keine Zahlung eingezogen; eine bereits autorisierte Zahlung wird nicht belastet.',
-                'Falls bereits eine Zahlung erfolgt ist, erhalten Sie die Erstattung in der Regel innerhalb von 5 bis 10 Werktagen auf Ihr ursprüngliches Zahlungsmittel; eine Bestätigung senden wir Ihnen, sobald die Erstattung veranlasst wurde.',
+                'Ihre Stornierungsanfrage erfüllt die Voraussetzungen der Richtlinie.',
+                'In diesem Prototyp wird die operative Stornierung nur simuliert; es wird keine Bestellung und keine Zahlung in einem externen System geändert.',
               ]
             : [
-                'Ihre Bestellung wurde storniert. Eine bereits autorisierte Zahlung wird nicht belastet.',
-                'Sollte bereits eine Zahlung erfolgt sein, wird diese als Erstattung bearbeitet; eine Bestätigung folgt.',
+                'Your cancellation request meets the policy requirements.',
+                'This prototype only simulates the operational cancellation; no order or payment is changed in an external system.',
               ]
           : de
             ? [
@@ -266,14 +266,14 @@ function damagedNextSteps(input: NextStepInput, de: boolean): string[] {
   const ref = input.caseReference;
   return de
     ? [
-        `Es tut uns leid, dass Ihr Artikel beschädigt angekommen ist. Wir haben hierfür einen Vorgang angelegt${ref ? ` (Referenz ${ref})` : ''}.`,
+        `Es tut uns leid, dass Ihr Artikel beschädigt angekommen ist. Ihre Meldung erfüllt die zeitlichen Voraussetzungen für die weitere Prüfung${ref ? `; die angezeigte Referenz ${ref} ist eine Simulation` : ''}.`,
         'Bitte antworten Sie auf diese E-Mail und fügen Sie einige Fotos des beschädigten Artikels sowie der Verpackung und eine kurze Beschreibung des Schadens bei.',
-        'Nach Eingang prüfen wir die Unterlagen und veranlassen – sofern berechtigt – einen kostenfreien Ersatz oder eine Erstattung. Wir melden uns dann mit den nächsten Schritten.',
+        'Nach Eingang würden die Unterlagen im operativen Kundenservice geprüft und der richtlinienkonforme nächste Schritt festgelegt. Dieser Prototyp führt keinen Ersatz, Austausch und keine Erstattung aus.',
       ]
     : [
-        `We are sorry your item arrived damaged. We have opened a case for you${ref ? ` (reference ${ref})` : ''}.`,
+        `We are sorry your item arrived damaged. Your report is within the policy window for further review${ref ? `; the displayed reference ${ref} is simulated` : ''}.`,
         'Please reply to this e-mail and attach a few photos of the damaged item and its packaging, along with a short description of the damage.',
-        'Once we receive them we will review the case and, where eligible, arrange a free replacement or a refund, then follow up with the next steps.',
+        'In an operational service, the evidence would then be reviewed and the policy-based next step determined. This prototype does not execute a replacement, exchange or refund.',
       ];
 }
 

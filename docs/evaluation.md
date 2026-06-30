@@ -3,6 +3,8 @@
 Phase 9 evaluates the complete Phase 8 pipeline without changing it. The evaluation layer is an
 offline consumer of `processEmail`; it never feeds a score back into classification, retrieval,
 the deterministic Decision Engine, response generation, or compliance validation.
+The evaluation cases and business records are synthetic and support interview demonstration, not
+production quality claims.
 
 ## Run
 
@@ -22,7 +24,7 @@ quality signal, not a runtime routing input. Review the failed checks and the ma
 before changing a prompt, expected output, rule, or policy.
 
 Cases run sequentially with a short fixed pause between them. This avoids an artificial provider
-burst while leaving the production client's calls, timeout, retry policy, prompts, and results
+burst while leaving the configured runtime client's calls, timeout, retry policy, prompts, and results
 unchanged.
 
 ## Dataset Contract
@@ -50,8 +52,8 @@ Scoring is deterministic and separated by concern:
 - exact-match deterministic workflow and decision;
 - hallucination safety: no high-risk or compliance-failed draft is delivered;
 - grounding: every expected delivered draft passes compliance and cites retrieved evidence;
-- safe escalation: explicit Human-by-Exception signals reach `HUMAN_ESCALATION`, while ordinary
-  supported cases do not;
+- safe escalation: explicit Human-by-Exception signals and the expired damaged-item policy rule
+  reach `HUMAN_ESCALATION`, while ordinary supported cases do not;
 - audit PII exclusion for labelled values;
 - provider-reported tokens, estimated cost, retry count, summed LLM latency, and end-to-end
   `processEmail` latency.

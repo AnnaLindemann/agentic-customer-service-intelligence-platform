@@ -2,7 +2,9 @@
 
 ## Core Concept
 
-This project implements a controlled customer service email processing system.
+This interview prototype implements a controlled customer service email decision engine over
+synthetic business data. Its lightweight browser workbench visualizes the pipeline; it is not a
+production agent console and does not execute operations in external systems.
 It uses agent-like responsibility boundaries, but not every component is an LLM agent.
 
 The system combines:
@@ -64,8 +66,9 @@ Each stage has one responsibility:
 - **Data Sufficiency Evaluation** — Checks whether enough evidence exists to answer safely.
 - **Business Rule Engine** — Applies company rules deterministically to the case.
 - **Decision Gate** — Returns exactly one outcome (`AUTO_REPLY`, `ASK_FOR_MORE_INFORMATION`,
-  `HUMAN_ESCALATION`) based on rules, sufficiency and confidence. See *Decision Gate Outcomes* below.
-- **Response Generator** — Uses an LLM to draft a reply grounded only in retrieved evidence.
+  `HUMAN_ESCALATION`, `OUT_OF_SCOPE`) based on rules, sufficiency and confidence.
+- **Response Generator** — Uses an LLM to word a grounded reply and falls back to a canonical
+  deterministic response when generation or compliance fails and a safe fallback exists.
 - **Compliance Validation** — Deterministically verifies the draft is grounded and safe.
 - **Audit Trace** — Passively records every stage, decision and reason code, plus per-call LLM
   metadata (tokens, latency, retries, estimated cost), compliance outcomes and derived evaluation
@@ -76,11 +79,12 @@ Each stage has one responsibility:
 
 ## Decision Gate Outcomes
 
-The Decision Gate returns exactly one of three outcomes:
+The Decision Gate returns exactly one of four outcomes:
 
 - `AUTO_REPLY`
 - `ASK_FOR_MORE_INFORMATION`
 - `HUMAN_ESCALATION`
+- `OUT_OF_SCOPE`
 
 `AUTO_REPLY` is the preferred outcome whenever deterministic validation succeeds and
 sufficient evidence exists. The system is built for maximum safe automation, so supported
@@ -90,16 +94,17 @@ low-risk requests should be answered automatically.
 only when automation would be unsafe or impossible. See
 [design-principles.md](design-principles.md) (*Human by Exception*).
 
+`OUT_OF_SCOPE` is an understood non-customer-service request that receives a deterministic
+redirect and does not consume human-review capacity.
+
 ## Escalation Triggers
 
 The Decision Gate escalates to a human when one or more of the following conditions hold:
 
 - legal threats
-- unsupported workflows
-- ambiguous intent
 - insufficient evidence
 - policy conflicts
-- failed compliance validation
+- damage claims outside the 30-day policy window
 - sensitive payment or personal data that cannot be safely minimized
 
 ## Worked Example
@@ -114,8 +119,8 @@ PII Sanitizer masks the email address → Intent Classification = `cancellation_
 Scope Validation passes (supported workflow) → Slot Extraction pulls `orderId: 10293` →
 Structured Data Retrieval finds the order → Semantic PDF Retrieval finds the cancellation
 policy → Data Sufficiency Evaluation passes → Business Rule Engine confirms the order is
-within the cancellation window → Decision Gate = `draft` → Response Generator writes the
-reply → Compliance Validation passes → Audit Trace recorded.
+within the cancellation window → Decision Gate = `AUTO_REPLY` → Response Generator explains
+eligibility and the simulated next step → Compliance Validation passes → Audit Trace recorded.
 
 **Example JSON output**
 
@@ -123,7 +128,7 @@ reply → Compliance Validation passes → Audit Trace recorded.
 {
   "decision": "AUTO_REPLY",
   "intent": "cancellation_request",
-  "draft": "Hello, your order 10293 is eligible for cancellation and has been cancelled...",
+  "draft": "Hello, your cancellation request is eligible under policy. This prototype does not modify the order system...",
   "evidence": [
     { "source": "business_data", "ref": "order:10293" },
     { "source": "policy_pdf", "ref": "cancellation-policy.pdf#p2" }
@@ -203,3 +208,9 @@ populates the same shape unchanged. See [decisions.md](decisions.md) (ADR-013).
 - No LangGraph
 - No autonomous multi-agent loops
 - No CRM integration
+
+Structured business records and evaluation emails are synthetic. The local embedding model and
+file-based vector index intentionally keep PDF retrieval lightweight. Production would additionally
+require authentication and authorization, CRM/ERP and ticket integrations, persistent storage, a
+production vector database where scale justifies it, monitoring and observability dashboards, a
+human-review queue, durable retries, deployment hardening, and labelled production evaluation data.

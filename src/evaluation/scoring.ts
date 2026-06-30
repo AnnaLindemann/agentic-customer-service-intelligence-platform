@@ -34,6 +34,7 @@ export interface EvaluatedCase {
     workflow: string;
     decision: string;
     deliveredDraft: boolean;
+    generationMode: WorkbenchResult['response']['generationMode'];
     compliancePassed: boolean;
     citedEvidenceCount: number;
     llmCalls: number;
@@ -110,6 +111,17 @@ export function evaluateCase(
       spec.expected.decision,
       result.decision.decision,
     ),
+    ...(spec.expected.reasonCode
+      ? [
+          check(
+            'decision' as const,
+            'decision_reason_code',
+            result.decision.reasonCode === spec.expected.reasonCode,
+            spec.expected.reasonCode,
+            result.decision.reasonCode,
+          ),
+        ]
+      : []),
     check(
       'response',
       'draft_delivery',
@@ -198,9 +210,10 @@ export function evaluateCase(
 
   const expectsHuman = spec.expected.decision === Decision.HUMAN_ESCALATION;
   const escalationCorrect = expectsHuman
-    ? result.escalation.triggered &&
-      result.escalation.category === spec.expected.escalationCategory &&
-      result.decision.decision === Decision.HUMAN_ESCALATION
+    ? result.decision.decision === Decision.HUMAN_ESCALATION &&
+      (spec.expected.escalationCategory === null ||
+        (result.escalation.triggered &&
+          result.escalation.category === spec.expected.escalationCategory))
     : result.decision.decision !== Decision.HUMAN_ESCALATION;
   checks.push(
     check(
@@ -239,6 +252,7 @@ export function evaluateCase(
       workflow: result.workflow,
       decision: result.decision.decision,
       deliveredDraft: result.response.delivered,
+      generationMode: result.response.generationMode,
       compliancePassed: result.response.compliance.passed,
       citedEvidenceCount: result.response.citedEvidence.length,
       llmCalls: result.audit.llmTotals.callCount,

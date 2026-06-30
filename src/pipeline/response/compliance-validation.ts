@@ -1,5 +1,5 @@
 /** Deterministic safety and grounding checks over a generated customer response. */
-import { Decision, ReasonCode } from '../../domain';
+import { Decision, ReasonCode, Workflow } from '../../domain';
 import type {
   BusinessRuleResult,
   ComplianceCheck,
@@ -69,6 +69,8 @@ function affirmsCommitment(draft: string, category: CommitmentCategory): boolean
 
 export interface ComplianceInput {
   decision: Decision;
+  /** Workflow context for deterministic checks that distinguish eligibility from execution. */
+  workflow?: Workflow;
   draft: string;
   citedRefs: string[];
   structuredFacts: StructuredSource[];
@@ -133,6 +135,24 @@ export function validateCompliance(input: ComplianceInput): ComplianceResult {
         : unknownRefs.length > 0
           ? `Unknown references cited: ${unknownRefs.join(', ')}.`
           : undefined,
+    ),
+  );
+
+  const promisesDamagedItemOperation =
+    input.workflow === Workflow.DAMAGED_ITEM &&
+    clauses(draft).some(
+      (clause) =>
+        /\b(ersatz|austausch|replacement|exchange|refund|erstatt\w*|rückerstatt\w*)\b/i.test(clause) &&
+        !NEGATION_MARKERS.test(clause) &&
+        !REQUEST_MARKERS.test(clause),
+    );
+  checks.push(
+    check(
+      'no_unexecuted_operations',
+      !promisesDamagedItemOperation,
+      promisesDamagedItemOperation
+        ? 'Damaged-item intake may explain eligibility and review, but cannot promise an unexecuted replacement, exchange or refund.'
+        : undefined,
     ),
   );
 
@@ -201,7 +221,7 @@ export function validateCompliance(input: ComplianceInput): ComplianceResult {
     matchesDecision =
       draft.trim().length > 0 &&
       (draft.includes('?') ||
-        /\b(bitte|benötig|senden sie|teilen sie|please|send|provide|share|could you|let us know)\b/i.test(
+        /\b(bitte|benötig\w*|senden sie|teilen sie|please|send|provide|share|could you|let us know)\b/i.test(
           draft,
         ));
   }

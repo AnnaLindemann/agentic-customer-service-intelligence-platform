@@ -227,7 +227,7 @@ in `src/schemas`:
   `product_availability`, `unknown`, `out_of_scope`
 - `Workflow`: `cancellation`, `damaged_item`, `invoice`, `product_availability`,
   `unsupported`
-- `Decision`: `AUTO_REPLY`, `ASK_FOR_MORE_INFORMATION`, `HUMAN_ESCALATION`
+- `Decision`: `AUTO_REPLY`, `ASK_FOR_MORE_INFORMATION`, `HUMAN_ESCALATION`, `OUT_OF_SCOPE`
 - `RiskLevel`: `low`, `medium`, `high`
 - `ReasonCode`: the explainability codes defined in `src/domain/enums.ts`
 
@@ -465,9 +465,9 @@ stages already existed from Phase 2 (`evaluation.schema.ts`, `business-rule.sche
   `AUTO_REPLY` whenever every check passes (ADR-007). A missing *customer* slot yields
   `ASK_FOR_MORE_INFORMATION`; a gap on our side (unresolved record, missing policy) yields
   `HUMAN_ESCALATION`.
-- The concrete business-rule thresholds (24h cancellation window; "only delivered orders may be
-  reported damaged"; refunded/voided invoices need human review) are MVP defaults, isolated in
-  `business-rules.ts` for the owner to adjust. They are not a published policy.
+- Policy thresholds are isolated in `business-rules.ts`: the 24-hour cancellation window and the
+  30-day damaged-item claim window. An expired damage claim is a blocking rule with reason code
+  `DAMAGE_CLAIM_WINDOW_EXPIRED` and follows `HUMAN_ESCALATION`.
 
 ## Consequences
 
@@ -541,11 +541,12 @@ LLM provider, client or SDK existed in the codebase. Several constraints had to 
   replaced with non-identifying aliases before entering the prompt.
 - **Compliance Validation** — deterministic. It requires cited references to exist, rejects
   unsupported promises unless an `AUTO_REPLY` has relevant cited evidence or passed-rule support,
-  checks German language and raw-PII leakage, and confirms the draft matches the decision. On any
-  failure the safe fallback is **no draft**
-  (human handling); it never edits the draft or changes the decision.
+  checks language and raw-PII leakage, and confirms the draft matches the decision. An LLM transport
+  or output failure causes a deterministic fallback candidate to pass through this same gate. The
+  fallback is canonical and delivered only when compliant; otherwise no response is delivered. The
+  Decision Gate result is never changed and human handling is not inferred from a response failure.
 - **Structured JSON Output** — a new contract `GeneratedResponseSchema`
-  (`{ caseId?, language:'de', decision, draft|null, delivered, citedEvidence[], compliance }`).
+  (`{ caseId?, language, generationMode, decision, draft|null, delivered, citedEvidence[], compliance }`).
   It deliberately excludes the audit trace; assembling `FinalApiResponse` (with audit) is Phase 7.
 - No new `ReasonCode` was added; existing `ESCALATION_REQUIRED` / `INVALID_LLM_OUTPUT` cover the
   safety-fallback paths.
@@ -557,7 +558,8 @@ Advantages:
 - the LLM is confined to language generation; the decision stays deterministic and unchanged;
 - provider is swappable by config (OpenAI) or one adapter file (Anthropic), with zero pipeline edits;
 - defence in depth on PII: masked email **and** redacted facts, plus a deterministic leak check;
-- every LLM output is Zod-validated with a single retry; failures degrade safely to human handling.
+- every LLM output is Zod-validated with a single retry; response failures degrade to a validated
+  deterministic fallback when available, without changing the deterministic decision.
 
 Trade-off:
 
@@ -614,8 +616,8 @@ no prompt-body logging, and — critically — no bypassing of the deterministic
   preserve masked placeholders verbatim; reconciling tokens with real records stays deterministic
   and is out of scope.
 - **Fail-safe via existing deterministic logic, not new logic:** an LLM failure or invalid output
-  collapses Intent Classification to `unknown` (the Decision Gate already routes `unknown` to
-  HUMAN_ESCALATION) and Slot Extraction to empty slots with every requested field marked missing
+  collapses Intent Classification to `unknown` (the Decision Gate asks for clarification) and Slot
+  Extraction to empty slots with every requested field marked missing
   (Data Sufficiency / Decision Gate then ask for information or escalate). A `fallback` flag on
   the outcome records that this happened.
 - The stages **interpret only**: they do not perform Scope Validation or Workflow Enrichment and
@@ -753,11 +755,12 @@ review. Three changes deliver this:
 1. **Classify each workflow by the kind of decision it is.**
    - *Informational* (product availability, invoice questions) — answer from data + policy for
      **all** statuses (including refunded/voided invoices).
-   - *Intake* (damaged item) — acknowledge, explain policy, open a simulated return/replacement
-     case, request evidence, state next steps. Never a gate to a human.
-   - *Action* (cancellation) — the only workflow whose rules gate an action; an eligible order is
-     auto-confirmed (with a simulated reference), an ineligible one is **explained** with the
-     return-after-delivery path rather than escalated.
+   - *Intake* (damaged item) — acknowledge eligibility, explain policy, generate a simulated
+     reference, request evidence and state next steps. Claims older than the policy's 30-day window
+     are a documented exception and go to a human.
+   - *Action assessment* (cancellation) — an eligible request is reported as policy-eligible with a
+     simulated reference; an ineligible one is **explained** with the return-after-delivery path.
+     The prototype does not mutate an order or payment system.
 
 2. **Add a deterministic Escalation-Trigger Guard** (`escalation-triggers.ts`) that scans the
    masked email for the human-only signals above (German + English). When it fires, the Decision
@@ -766,18 +769,17 @@ review. Three changes deliver this:
 
 3. **Re-order and re-target the Decision Gate.** New order: explicit escalation signal →
    out-of-scope → unknown/ambiguous (**ASK**) → missing customer slot (**ASK**) → unresolved record
-   (**ASK**) → failed *blocking* rule (escalate; none today) → damaged-item not delivered (**ASK**)
-   → AUTO_REPLY. Business rules are reclassified `blocking` vs `informational`; current eligibility
-   rules are *informational* and shape *which* grounded reply is sent, not whether a human is
-   involved.
+   (**ASK**) → failed *blocking* rule (expired damage window → **ESC**) → damaged-item not delivered (**ASK**)
+   → AUTO_REPLY. Business rules are classified `blocking` vs `informational`; ordinary eligibility
+   outcomes shape the reply, while the expired damage-window rule is explicitly blocking.
 
 Supporting changes: a deterministic **Case Intake** helper (`case-intake.ts`) mints simulated
-references (`CXL-…`, `RMA-…`); the **response prompt** is held to a four-part customer-guidance
+references (`CXL-…`, `RMA-…`) without creating an external ticket; the **response prompt** is held to a four-part customer-guidance
 contract (what happened · why · what happens next · what to do) and quotes the case reference; a
 deterministic **Customer Guidance** module (`customer-guidance.ts`) powers the Workbench
-"why/next" panels and supplies a safe German reply whenever no compliant draft exists, so the
-customer is *always* guided. Grounding stays conservative: no broad hard-coded policy fallback is
-added — a missing grounding policy remains a safe fallback to a human.
+"why/next" panels. For safe `AUTO_REPLY` and `ASK_FOR_MORE_INFORMATION` outcomes, a deterministic
+fallback becomes canonical only after compliance passes. Grounding stays conservative: no broad
+hard-coded policy fallback is added.
 
 ## What does NOT change
 
@@ -785,10 +787,11 @@ added — a missing grounding policy remains a safe fallback to a human.
 - **Pipeline order and responsibility split** — stages keep their order; the guard and intake slot
   into the existing decision boundary; the audit layer stays passive (ADR-013).
 - **PII strategy (ADR-004)**, **provider abstraction (ADR-011)**, **hybrid retrieval (ADR-009)** —
-  untouched. `HUMAN_ESCALATION` still makes no LLM call (ADR-011); its customer message is
-  deterministic.
-- **Schemas / domain enums** — `Decision`, `Workflow`, `RiskLevel`, `ReasonCode` unchanged. The only
-  schema addition is an **optional** `kind` on `BusinessRuleResult` (defaults to informational).
+  untouched. `HUMAN_ESCALATION` still makes no response-generation LLM call (ADR-011) and produces
+  no automated customer draft.
+- **Schemas / domain enums** — the stabilization adds the explicit
+  `DAMAGE_CLAIM_WINDOW_EXPIRED` reason code; `BusinessRuleResult.kind` marks this policy rule as
+  blocking.
 
 ## Consequences
 
@@ -796,7 +799,7 @@ Advantages:
 
 - the large majority of requests are resolved automatically; escalations become meaningful;
 - the safety net is precise (explicit signals) and fully auditable;
-- every outcome guides the customer, deterministically when no LLM draft exists.
+- safe automated outcomes retain a compliant deterministic response when LLM wording fails.
 
 Trade-offs:
 

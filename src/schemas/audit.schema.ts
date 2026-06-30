@@ -136,6 +136,7 @@ const CheckOutcomeSchema = z.enum(['pass', 'fail', 'not_checked']);
 
 /** The deterministic compliance verdict over the generated draft. */
 export const ComplianceAuditMetadataSchema = z.object({
+  generationMode: z.enum(['LLM', 'DETERMINISTIC_FALLBACK', 'NONE']),
   compliancePassed: z.boolean(),
   citedEvidenceCount: z.number(),
   failedChecks: z.array(z.string()).default([]),

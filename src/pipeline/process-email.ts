@@ -18,7 +18,7 @@ import { randomUUID } from 'node:crypto';
 import { config } from '../config/env';
 import { demoNow } from '../config/demo-clock';
 import { Decision, Intent, Workflow } from '../domain';
-import { FinalApiResponseSchema } from '../schemas';
+import { FinalApiResponseSchema, GeneratedResponseSchema } from '../schemas';
 import type {
   AuditRecord,
   AuditStageRecord,
@@ -94,7 +94,7 @@ export interface WorkbenchResult {
   language: Language;
   /** Escalation-Trigger Guard result (ADR-014): whether a human-only signal was detected. */
   escalation: EscalationSignal;
-  /** Simulated case reference opened for an action/intake outcome, when applicable. */
+  /** Simulated reference generated for an action/intake outcome, when applicable. */
   caseReference?: string;
   /** Retrieved evidence: structured business facts and policy passages with similarity scores. */
   retrieval: {
@@ -108,14 +108,8 @@ export interface WorkbenchResult {
   businessRules: ReturnType<typeof runDecisionEngine>['ruleResults'];
   /** The single Decision Gate outcome. */
   decision: ReturnType<typeof runDecisionEngine>['decision'];
-  /** Generated response: the draft (or null), compliance verdict and cited evidence. */
+  /** Canonical customer response: the draft (or null), generation mode, compliance and evidence. */
   response: GeneratedResponse;
-  /**
-   * The customer-facing reply to display — the compliant LLM draft when delivered, otherwise a
-   * deterministic, policy-safe message (escalation acknowledgement or "we are reviewing"). Always
-   * present, so the Workbench always shows a customer reply (ADR-014).
-   */
-  customerMessage: string;
   /** Deterministic "what happened / why / what next / what to do" guidance for the decision. */
   guidance: DecisionGuidance;
   /** The ordered stage timeline. */
@@ -214,7 +208,8 @@ export interface ProcessEmailOptions {
  * Run the full pipeline for one raw customer email and return the workbench bundle.
  *
  * Stage order is fixed and matches `docs/architecture.md`. The function never throws on a
- * stage's safe fallback: an LLM failure degrades to escalation, not to an error.
+ * stage's safe fallback: an LLM response failure uses a compliant deterministic response when one
+ * is available, otherwise no response is delivered. The Decision Gate outcome is never changed.
  */
 export async function processEmail(
   rawEmail: string,
@@ -299,7 +294,7 @@ export async function processEmail(
   // 5b. Case Intake (deterministic, ADR-014) — mint a simulated case reference for action/intake
   //     workflows once the order id is resolved (cancellation → CXL-…, damaged item → RMA-…).
   const caseReference = buildCaseReference(enrichment.workflow, resolvedSlots);
-  if (caseReference) recordStage('CaseIntake', `case ${caseReference} opened`);
+  if (caseReference) recordStage('CaseIntake', `simulated reference ${caseReference} generated`);
 
   // 6/7. Hybrid Retrieval — Structured Data + Semantic PDF (deterministic + local embeddings).
   const retrieval = await retrieveEvidence(
@@ -385,57 +380,12 @@ export async function processEmail(
     productCandidates,
   });
 
-  // 11/12. Response Generator + Compliance Validation (LLM draft, deterministic gate).
-  const response = await runResponseGeneration(
-    {
-      caseId,
-      decision: decisionEngine.decision,
-      intent: classification.intent,
-      workflow: enrichment.workflow,
-      sanitizedEmail: sanitization.sanitizedEmail,
-      missingInformation: enrichment.missingInformation,
-      structuredFacts: retrieval.structuredFacts,
-      policyEvidence: retrieval.policyEvidence,
-      ruleResults: decisionEngine.ruleResults,
-      caseReference,
-      language,
-      nextSteps,
-      detectedPiiValues: sanitization.detectedPII.map((p) => p.rawValue),
-    },
-    llm,
-  );
-  recordStage('ResponseGenerator', response.delivered ? 'draft delivered' : 'no draft');
-  recordStage(
-    'ComplianceValidation',
-    response.compliance.passed ? 'passed' : 'failed',
-    response.compliance.reasonCode,
-  );
-
-  // Deterministic customer guidance (ADR-014). Drives the Workbench "why / next action" panels and
-  // supplies a safe customer-facing reply whenever there is no compliant LLM draft. Both are
-  // derived purely from the decided case — they never change the decision.
-  const guidance = buildDecisionGuidance({
-    decision: decisionEngine.decision.decision,
-    workflow: enrichment.workflow,
-    reasonCode: decisionEngine.decision.reasonCode,
-    missingInformation: enrichment.missingInformation,
-    caseReference,
-    escalationCategory: escalation.category,
-    outOfScopeCategory,
-    productResolution: productResolution?.status,
-    productQuery: productName,
-    productCandidates,
-    actionEligible,
-  });
-  // The delivered draft is PII-masked (it was generated from, and compliance-checked against,
-  // masked text). For the customer-facing message we resolve any residual mask placeholders back
-  // to the customer's own identifiers using the in-process unmask map — the same reversible step
-  // the orchestrator already performs for retrieval. No unmasked PII is ever sent to an LLM, so
-  // ADR-004 holds; this only restores the customer's own order/invoice number in their own reply.
-  const baseMessage =
-    response.delivered && response.draft
-      ? resolveValue(response.draft, unmask) ?? response.draft
-      : fallbackCustomerReply({
+  // Build the deterministic fallback before response generation. It becomes customer-visible only
+  // if the LLM fails and the Response Generator validates it into the canonical response object.
+  const deterministicFallbackDraft =
+    decisionEngine.decision.decision === Decision.AUTO_REPLY ||
+    decisionEngine.decision.decision === Decision.ASK_FOR_MORE_INFORMATION
+      ? fallbackCustomerReply({
           decision: decisionEngine.decision.decision,
           workflow: enrichment.workflow,
           reasonCode: decisionEngine.decision.reasonCode,
@@ -450,11 +400,66 @@ export async function processEmail(
           language,
           structuredFacts: retrieval.structuredFacts,
           ruleResults: decisionEngine.ruleResults,
-        });
-  // Deterministically personalise the greeting with the customer's own name (from structured
-  // retrieval), applied *after* compliance — the name is never sent to the LLM (ADR-004).
-  const customerName = customerNameFromFacts(retrieval.structuredFacts);
-  const customerMessage = personalizeGreeting(baseMessage, language, customerName);
+        })
+      : undefined;
+
+  // 11/12. Response Generator + Compliance Validation (LLM or deterministic canonical response).
+  let response = await runResponseGeneration(
+    {
+      caseId,
+      decision: decisionEngine.decision,
+      intent: classification.intent,
+      workflow: enrichment.workflow,
+      sanitizedEmail: sanitization.sanitizedEmail,
+      missingInformation: enrichment.missingInformation,
+      structuredFacts: retrieval.structuredFacts,
+      policyEvidence: retrieval.policyEvidence,
+      ruleResults: decisionEngine.ruleResults,
+      caseReference,
+      language,
+      nextSteps,
+      deterministicFallbackDraft,
+      detectedPiiValues: sanitization.detectedPII.map((p) => p.rawValue),
+    },
+    llm,
+  );
+  recordStage('ResponseGenerator', response.delivered ? 'draft delivered' : 'no draft');
+  recordStage(
+    'ComplianceValidation',
+    response.compliance.passed ? 'passed' : 'failed',
+    response.compliance.reasonCode,
+  );
+
+  // Deterministic customer guidance (ADR-014). Drives the Workbench "why / next action" panels and
+  // explains the decided case independently of how the canonical response was generated.
+  const guidance = buildDecisionGuidance({
+    decision: decisionEngine.decision.decision,
+    workflow: enrichment.workflow,
+    reasonCode: decisionEngine.decision.reasonCode,
+    missingInformation: enrichment.missingInformation,
+    caseReference,
+    escalationCategory: escalation.category,
+    outOfScopeCategory,
+    productResolution: productResolution?.status,
+    productQuery: productName,
+    productCandidates,
+    actionEligible,
+  });
+  // The delivered draft is PII-masked (it was generated from, and compliance-checked against,
+  // masked text). In the canonical response we resolve any residual mask placeholders back
+  // to the customer's own identifiers using the in-process unmask map — the same reversible step
+  // the orchestrator already performs for retrieval. No unmasked PII is ever sent to an LLM, so
+  // ADR-004 holds; this only restores the customer's own order/invoice number in their own reply.
+  if (response.delivered && response.draft) {
+    const resolvedDraft = resolveValue(response.draft, unmask) ?? response.draft;
+    // Deterministically personalise the canonical response after compliance. The customer's own
+    // name is retrieved locally and is never sent to the LLM (ADR-004).
+    const customerName = customerNameFromFacts(retrieval.structuredFacts);
+    response = GeneratedResponseSchema.parse({
+      ...response,
+      draft: personalizeGreeting(resolvedDraft, language, customerName),
+    });
+  }
 
   // 13. Audit & Evaluation — passive Phase 7 record (never alters anything above).
   const audit = buildAuditTrace({
@@ -514,7 +519,6 @@ export async function processEmail(
     businessRules: decisionEngine.ruleResults,
     decision: decisionEngine.decision,
     response,
-    customerMessage,
     guidance,
     stages,
     audit,

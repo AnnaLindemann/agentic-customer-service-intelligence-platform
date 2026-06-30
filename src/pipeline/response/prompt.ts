@@ -172,7 +172,7 @@ export interface ResponsePromptInput {
   structuredFacts: StructuredSource[];
   policyEvidence: RetrievedSource[];
   ruleResults?: BusinessRuleResult[];
-  /** Simulated case reference (e.g. `RMA-10003`) the reply should quote, when one was opened. */
+  /** Simulated reference the reply may quote without implying an external ticket was created. */
   caseReference?: string;
   /** Customer-facing language the reply must be written in. */
   language: Language;
@@ -190,6 +190,9 @@ const SYSTEM_PROMPT_DE = [
   '- Triff keine Zusagen, die nicht ausdrücklich durch die Belege, Regeln oder den EMPFOHLENEN',
   '  NÄCHSTEN SCHRITT gestützt sind. Erfinde keine Rabatte, Aktionen oder Lieferzusagen.',
   '- Ändere die getroffene Entscheidung nicht; formuliere ausschließlich den Antworttext.',
+  '- Dieser Prototyp führt keine operativen Aktionen aus. Behaupte niemals, dass eine Bestellung',
+  '  storniert, ein Vorgang in einem externen System angelegt oder eine Erstattung, ein Ersatz bzw.',
+  '  ein Austausch ausgeführt wurde. Beschreibe nur Eignung, Richtlinie, Prüfung und nächste Schritte.',
   '- Gib keine personenbezogenen Daten oder maskierten Platzhalter (z. B. [ORDER_ID_1]) aus.',
   '',
   'Formatiere die Antwort als echte Geschäfts-E-Mail mit Absätzen, getrennt durch je eine Leerzeile:',
@@ -207,8 +210,8 @@ const SYSTEM_PROMPT_DE = [
   '',
   '- Jede Antwort soll die Kundin oder den Kunden zum nächsten Schritt führen.',
   '- Bei ASK_FOR_MORE_INFORMATION: bitte konkret um die fehlende Angabe; sage KEINE Aktion zu.',
-  '- Nenne Erstattung, Gutschrift oder kostenlosen Ersatz nur, wenn dies durch die RICHTLINIEN-',
-  '  AUSZÜGE oder den EMPFOHLENEN NÄCHSTEN SCHRITT gedeckt ist.',
+  '- Bei Schadensmeldungen: verspreche keinen Ersatz, Austausch und keine Erstattung; die',
+  '  deterministische Entscheidung bestätigt nur die Eignung für die weitere Prüfung.',
   '- Wenn ein FALLBEZUG angegeben ist, nenne diese Referenz in der Antwort.',
   '- Zitiere in "citedRefs" ausschließlich die exakten Referenzkürzel aus den RICHTLINIEN-AUSZÜGEN',
   '  bzw. STRUKTURIERTEN FAKTEN (z. B. "policy:1"), niemals Abschnittsnummern wie "policy:2.2".',
@@ -228,6 +231,9 @@ const SYSTEM_PROMPT_EN = [
   '- Make no promise that is not explicitly supported by the evidence, the rules or the RECOMMENDED',
   '  NEXT STEP. Do not invent discounts, promotions or delivery guarantees.',
   '- Do not change the decision that was made; only write the reply text.',
+  '- This prototype performs no operational action. Never claim that an order was cancelled, a case',
+  '  was created in an external system, or a refund, replacement or exchange was executed. Describe',
+  '  only eligibility, policy, review and next steps.',
   '- Do not output any personal data or masked placeholders (e.g. [ORDER_ID_1]).',
   '',
   'Format the reply as a real business email with paragraphs separated by a single blank line:',
@@ -245,8 +251,8 @@ const SYSTEM_PROMPT_EN = [
   '',
   '- Every reply should guide the customer toward their next step.',
   '- For ASK_FOR_MORE_INFORMATION: ask specifically for the missing detail; do NOT promise any action.',
-  '- Mention a refund, credit or free replacement only when supported by the POLICY EXCERPTS or the',
-  '  RECOMMENDED NEXT STEP.',
+  '- For damaged-item intake, promise no replacement, exchange or refund; the deterministic decision',
+  '  establishes eligibility for further review only.',
   '- If a CASE REFERENCE is given, include it in the reply.',
   '- In "citedRefs" use only the exact reference labels from the POLICY EXCERPTS or STRUCTURED FACTS',
   '  (e.g. "policy:1"), never section numbers such as "policy:2.2".',

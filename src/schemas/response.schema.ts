@@ -46,12 +46,13 @@ export const CitedEvidenceSchema = z.object({
 /**
  * The Structured JSON Output of Phase 6 — Response Generation. It echoes the Decision Gate
  * result unchanged (Response Generation never alters a business decision), and adds the
- * generated draft, the evidence it cited and the deterministic compliance outcome.
+ * canonical customer response, how it was produced, the evidence it cited and the deterministic
+ * compliance outcome.
  *
- * `draft` is the German reply only when `delivered` is true (a compliant draft for an
- * `AUTO_REPLY` or `ASK_FOR_MORE_INFORMATION`). It is null whenever no draft is delivered:
- * a human escalation, an LLM failure, or a draft that failed Compliance Validation. In those
- * cases the case is handled by a human — the safe fallback.
+ * `draft` is the official customer-facing reply only when `delivered` is true. It may be an
+ * LLM-written response or a deterministic fallback that passed the same compliance gate. A null
+ * draft means no response was delivered; it does not change or imply a different Decision Gate
+ * outcome.
  *
  * Note: the full audit trace (Phase 7) is deliberately not included here.
  */
@@ -61,6 +62,8 @@ export const GeneratedResponseSchema = z.object({
   language: z.enum(['de', 'en']),
   /** Exact response prompt template associated with this stage outcome. */
   promptVersion: z.literal('response-generation/v2'),
+  /** How the canonical response was produced. `NONE` means no customer response was delivered. */
+  generationMode: z.enum(['LLM', 'DETERMINISTIC_FALLBACK', 'NONE']),
   /** The Decision Gate outcome, carried through unchanged. */
   decision: DecisionSchema,
   /** The customer reply in the detected language when delivered, otherwise null. */
@@ -69,4 +72,26 @@ export const GeneratedResponseSchema = z.object({
   delivered: z.boolean(),
   citedEvidence: z.array(CitedEvidenceSchema).default([]),
   compliance: ComplianceResultSchema,
+}).superRefine((response, ctx) => {
+  if (response.delivered !== (response.draft !== null)) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['delivered'],
+      message: '`delivered` must be true exactly when the canonical draft is present.',
+    });
+  }
+  if (response.delivered && !response.compliance.passed) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['compliance'],
+      message: 'A delivered canonical response must pass compliance.',
+    });
+  }
+  if (response.generationMode === 'NONE' && response.delivered) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['generationMode'],
+      message: '`NONE` cannot be used for a delivered response.',
+    });
+  }
 });

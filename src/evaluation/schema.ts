@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { DECISIONS, INTENTS, WORKFLOWS } from '../domain';
+import { DECISIONS, INTENTS, REASON_CODES, WORKFLOWS } from '../domain';
 
 const ExpectedSlotsSchema = z
   .object({
@@ -21,6 +21,7 @@ export const EvaluationCaseSchema = z.object({
     intent: z.enum(INTENTS),
     workflow: z.enum(WORKFLOWS),
     decision: z.enum(DECISIONS),
+    reasonCode: z.enum(REASON_CODES).optional(),
     slots: ExpectedSlotsSchema,
     missingSlots: z.array(z.string()).default([]),
     escalationCategory: z

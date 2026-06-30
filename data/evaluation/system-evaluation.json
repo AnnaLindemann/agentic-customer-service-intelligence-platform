@@ -1,6 +1,6 @@
 {
   "name": "Phase 9 synthetic customer-email evaluation",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Synthetic German and English cases covering supported workflows, clarification paths, Human-by-Exception triggers, PII handling, grounding, prompt reliability, cost and latency.",
   "cases": [
     {
@@ -126,6 +126,25 @@
         "escalationCategory": null,
         "deliveredDraft": true,
         "llmStages": ["IntentClassification", "SlotExtraction", "LlmDraft"],
+        "forbiddenAuditValues": []
+      }
+    },
+    {
+      "id": "damaged-item-window-expired",
+      "description": "Damage claim outside the 30-day policy window is reserved for manual review",
+      "tags": ["damaged-item", "escalation", "policy-window"],
+      "email": "Meine Bestellung 10007 wurde vor mehr als zwei Monaten geliefert. Der TrailRest 20F Sleeping Bag ist beschädigt. Bitte prüfen Sie meine Reklamation.",
+      "demoMode": true,
+      "expected": {
+        "intent": "damaged_item",
+        "workflow": "damaged_item",
+        "decision": "HUMAN_ESCALATION",
+        "reasonCode": "DAMAGE_CLAIM_WINDOW_EXPIRED",
+        "slots": { "orderId": "10007", "productName": "TrailRest 20F Sleeping Bag" },
+        "missingSlots": [],
+        "escalationCategory": null,
+        "deliveredDraft": false,
+        "llmStages": ["IntentClassification", "SlotExtraction"],
         "forbiddenAuditValues": []
       }
     },

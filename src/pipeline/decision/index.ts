@@ -17,6 +17,7 @@ export { evaluateDataSufficiency, type SufficiencyInput } from './data-sufficien
 export {
   applyBusinessRules,
   CANCELLATION_WINDOW_HOURS,
+  DAMAGED_ITEM_WINDOW_DAYS,
   type BusinessRuleInput,
 } from './business-rules';
 

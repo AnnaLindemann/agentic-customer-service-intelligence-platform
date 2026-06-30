@@ -106,6 +106,7 @@ test('HUMAN_ESCALATION returns without constructing a configured client', async 
       policyEvidence: [],
     });
     assert.equal(result.delivered, false);
+    assert.equal(result.generationMode, 'NONE');
     assert.equal(result.promptVersion, RESPONSE_PROMPT_VERSION);
     assert.deepEqual(result.decision, decision);
   } finally {
@@ -159,7 +160,7 @@ test('German validation is conservative', () => {
   assert.equal(isLikelyGerman('Danke.'), false);
 });
 
-test('response generation preserves the deterministic decision', async () => {
+test('LLM success is the delivered canonical response and preserves the deterministic decision', async () => {
   const decision = {
     decision: Decision.AUTO_REPLY,
     riskLevel: RiskLevel.LOW,
@@ -186,7 +187,134 @@ test('response generation preserves the deterministic decision', async () => {
   );
 
   assert.equal(result.delivered, true);
+  assert.equal(result.generationMode, 'LLM');
   assert.deepEqual(result.decision, decision);
   assert.equal(result.promptVersion, RESPONSE_PROMPT_VERSION);
   assert.deepEqual(result.citedEvidence, [{ ref: 'structured:product:1', source: 'structured' }]);
+});
+
+test('LLM failure delivers a compliant deterministic fallback canonically', async () => {
+  const decision = {
+    decision: Decision.AUTO_REPLY,
+    riskLevel: RiskLevel.LOW,
+    reasonCode: ReasonCode.AUTO_REPLY_ALLOWED,
+  };
+  const result = await runResponseGeneration(
+    {
+      decision,
+      intent: Intent.PRODUCT_AVAILABILITY,
+      workflow: Workflow.PRODUCT_AVAILABILITY,
+      sanitizedEmail: 'Ist das Produkt verfügbar?',
+      missingInformation: [],
+      structuredFacts: [{
+        ref: 'product:SKU-TENT-2P',
+        kind: 'product',
+        data: { name: 'Zelt', availability: 'in_stock' },
+      }],
+      policyEvidence: [],
+      deterministicFallbackDraft:
+        'Guten Tag,\n\nvielen Dank für Ihre Nachricht.\n\nDas Produkt ist verfügbar und kann bestellt werden.\n\nFreundliche Grüße\nIhr Kundenservice',
+    },
+    failingClient(),
+  );
+
+  assert.equal(result.generationMode, 'DETERMINISTIC_FALLBACK');
+  assert.equal(result.delivered, true);
+  assert.ok(result.draft?.includes('Produkt ist verfügbar'));
+  assert.equal(result.compliance.passed, true);
+  assert.deepEqual(result.decision, decision);
+  assert.deepEqual(result.citedEvidence, [
+    { ref: 'structured:product:1', source: 'structured' },
+  ]);
+});
+
+test('LLM failure does not deliver a deterministic fallback that fails compliance', async () => {
+  const decision = {
+    decision: Decision.AUTO_REPLY,
+    riskLevel: RiskLevel.LOW,
+    reasonCode: ReasonCode.AUTO_REPLY_ALLOWED,
+  };
+  const result = await runResponseGeneration(
+    {
+      decision,
+      intent: Intent.PRODUCT_AVAILABILITY,
+      workflow: Workflow.PRODUCT_AVAILABILITY,
+      sanitizedEmail: 'Ist das Produkt verfügbar?',
+      missingInformation: [],
+      structuredFacts: [{
+        ref: 'product:SKU-TENT-2P',
+        kind: 'product',
+        data: { name: 'Zelt', availability: 'in_stock' },
+      }],
+      policyEvidence: [],
+      deterministicFallbackDraft:
+        'Guten Tag, wir erstatten Ihnen den Betrag und garantieren kostenlosen Ersatz.',
+    },
+    failingClient(),
+  );
+
+  assert.equal(result.generationMode, 'DETERMINISTIC_FALLBACK');
+  assert.equal(result.delivered, false);
+  assert.equal(result.draft, null);
+  assert.equal(result.compliance.passed, false);
+  assert.deepEqual(result.decision, decision);
+  assert.doesNotMatch(
+    result.compliance.checks.map((check) => check.detail ?? '').join(' '),
+    /human handling|human escalation/i,
+  );
+});
+
+test('damaged-item operational promise is replaced by a compliant eligibility response', async () => {
+  const decision = {
+    decision: Decision.AUTO_REPLY,
+    riskLevel: RiskLevel.LOW,
+    reasonCode: ReasonCode.AUTO_REPLY_ALLOWED,
+  };
+  const result = await runResponseGeneration(
+    {
+      decision,
+      intent: Intent.DAMAGED_ITEM,
+      workflow: Workflow.DAMAGED_ITEM,
+      sanitizedEmail: 'Der gelieferte Artikel ist beschädigt. Was soll ich tun?',
+      missingInformation: [],
+      structuredFacts: [{
+        ref: 'order:10003',
+        kind: 'order',
+        data: { status: 'delivered', deliveredAt: '2026-06-24T15:00:00Z' },
+      }],
+      policyEvidence: [{
+        ref: 'customer-service-policy.pdf#p2',
+        snippet: 'Damage claims reported within 30 days are eligible for evidence review.',
+        score: 0.9,
+      }],
+      ruleResults: [
+        {
+          ruleId: 'damaged_item.order_delivered',
+          passed: true,
+          riskLevel: RiskLevel.LOW,
+          reasonCode: ReasonCode.RULE_PASSED,
+          kind: 'informational',
+        },
+        {
+          ruleId: 'damaged_item.within_claim_window',
+          passed: true,
+          riskLevel: RiskLevel.LOW,
+          reasonCode: ReasonCode.RULE_PASSED,
+          kind: 'blocking',
+        },
+      ],
+      deterministicFallbackDraft:
+        'Guten Tag,\n\nvielen Dank für Ihre Nachricht. Ihre Schadensmeldung erfüllt die Voraussetzungen für die weitere Prüfung.\n\nBitte senden Sie Fotos des Artikels und der Verpackung. Anschließend würden die Unterlagen geprüft. Dieser Prototyp führt keine Erstattung aus.\n\nFreundliche Grüße\nIhr Kundenservice',
+    },
+    resultClient({
+      reply: 'Guten Tag, wir erstatten Ihnen den Betrag und senden einen kostenlosen Ersatz.',
+      citedRefs: ['structured:order:1', 'policy:1'],
+    }),
+  );
+
+  assert.equal(result.generationMode, 'DETERMINISTIC_FALLBACK');
+  assert.equal(result.delivered, true);
+  assert.equal(result.compliance.passed, true);
+  assert.match(result.draft ?? '', /weitere Prüfung/);
+  assert.doesNotMatch(result.draft ?? '', /wir erstatten|senden einen.*Ersatz/i);
 });

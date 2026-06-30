@@ -109,6 +109,7 @@ function buildComplianceMetadata(
 ): ComplianceAuditMetadata {
   if (!response) {
     return {
+      generationMode: 'NONE',
       compliancePassed: true,
       citedEvidenceCount: 0,
       failedChecks: [],
@@ -132,6 +133,7 @@ function buildComplianceMetadata(
       : 'ungrounded';
 
   return {
+    generationMode: response.generationMode,
     compliancePassed: response.compliance.passed,
     citedEvidenceCount: response.citedEvidence.length,
     failedChecks,

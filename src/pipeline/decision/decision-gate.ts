@@ -21,8 +21,7 @@
  *        - missing customer slot        → ASK_FOR_MORE_INFORMATION
  *        - referenced record unresolved → ASK_FOR_MORE_INFORMATION (confirm the identifier)
  *        - missing grounding policy     → HUMAN_ESCALATION (conservative safe fallback)
- *   5. Failed *blocking* business rule  → HUMAN_ESCALATION   (none today; informational rules
- *                                        instead shape which grounded reply is sent)
+ *   5. Failed *blocking* business rule  → HUMAN_ESCALATION   (for example, an expired damage claim)
  *   6. Damaged item not yet delivered   → ASK_FOR_MORE_INFORMATION (confirm delivery & details)
  *   7. Everything else                  → AUTO_REPLY (eligible action confirmed, ineligible action
  *                                        explained with the alternative, or question answered)
@@ -112,10 +111,10 @@ function autoReplyRationale(workflow: Workflow, ruleResults: BusinessRuleResult[
   switch (workflow) {
     case Workflow.CANCELLATION:
       return failed.length === 0
-        ? 'Order is eligible for cancellation; confirming the cancellation and opening a case.'
+        ? 'Order is eligible for cancellation under policy; reporting the simulated action outcome.'
         : 'Order is no longer eligible for self-service cancellation; explaining the policy and the return-after-delivery path.';
     case Workflow.DAMAGED_ITEM:
-      return 'Delivered order; opening a return/replacement case and requesting the required evidence.';
+      return 'Delivered order is within the claim window; explaining the simulated intake and requesting evidence.';
     case Workflow.INVOICE:
       return 'Invoice located; answering the billing question from the stored record and policy.';
     case Workflow.PRODUCT_AVAILABILITY:
@@ -227,15 +226,19 @@ export function decide(input: DecisionGateInput): DecisionResult {
     );
   }
 
-  // 5. A failed *blocking* business rule is a genuine policy conflict (none today). Informational
+  // 5. A failed *blocking* business rule is a genuine policy conflict. Informational
   //    rules that "fail" are not handled here — they shape the AUTO_REPLY message in step 7.
   const blockingFailed = ruleResults.filter((rule) => !rule.passed && isBlocking(rule));
   if (blockingFailed.length > 0) {
+    const reasonCode =
+      blockingFailed.length === 1
+        ? blockingFailed[0].reasonCode
+        : ReasonCode.BUSINESS_RULE_CONFLICT;
     return result(
       Decision.HUMAN_ESCALATION,
       highestRisk(blockingFailed),
-      ReasonCode.BUSINESS_RULE_CONFLICT,
-      `Blocking business rule(s) not satisfied: ${blockingFailed.map((rule) => rule.ruleId).join(', ')}.`,
+      reasonCode,
+      `Manual review required because blocking policy rule(s) failed: ${blockingFailed.map((rule) => `${rule.ruleId} (${rule.details ?? rule.reasonCode})`).join('; ')}.`,
     );
   }
 

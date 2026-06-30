@@ -130,6 +130,14 @@ export function renderMarkdown(report: SystemEvaluationReport): string {
     `${aggregate.passedCases}/${aggregate.totalCases} cases passed all automated checks (${percentage(aggregate.passRate)}). ` +
       'The evaluation is observational: it does not alter pipeline decisions or provider behaviour.',
     '',
+    aggregate.checks.decision.rate === 1 &&
+    aggregate.checks.response.rate === 1 &&
+    aggregate.checks.hallucination.rate === 1 &&
+    aggregate.checks.grounding.rate === 1 &&
+    aggregate.checks.escalation.rate === 1
+      ? 'Deterministic decision, response delivery, hallucination containment, grounding and escalation checks all passed. Strict all-of-case acceptance also includes provider-dependent prompt and slot reliability.'
+      : 'One or more deterministic decision, response or safety checks require review.',
+    '',
     '## Quality and Safety Metrics',
     '',
     '| Area | Passed | Rate |',
@@ -155,11 +163,11 @@ export function renderMarkdown(report: SystemEvaluationReport): string {
     '',
     '## Case Results',
     '',
-    '| Case | Result | Actual intent | Actual decision | Failed checks |',
-    '|---|---|---|---|---|',
+    '| Case | Result | Actual intent | Actual decision | Response mode | Failed checks |',
+    '|---|---|---|---|---|---|',
     ...report.cases.map((item) => {
       const failures = item.checks.filter((check) => !check.passed).map((check) => check.name);
-      return `| ${item.id} | ${item.passed ? 'PASS' : 'FAIL'} | ${item.actual.intent} | ${item.actual.decision} | ${failures.join(', ') || '—'} |`;
+      return `| ${item.id} | ${item.passed ? 'PASS' : 'FAIL'} | ${item.actual.intent} | ${item.actual.decision} | ${item.actual.generationMode} | ${failures.join(', ') || '—'} |`;
     }),
     '',
     '## Failed Check Details',

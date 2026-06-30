@@ -1,9 +1,9 @@
 /**
  * Case Intake — deterministic simulated case references (ADR-014, "Human by Exception v2").
  *
- * When the platform automates an *action* or *intake* outcome it should behave like a Customer
- * Operations system, not an email router: it opens a tracked case and tells the customer the
- * reference. This module mints those references deterministically from the workflow and the
+ * For an *action* or *intake* outcome the workbench demonstrates the reference that a connected
+ * Customer Operations system could create. This module mints those simulated references from the
+ * workflow and the
  * resolved order id, so the same email always yields the same reference (reproducible demos and
  * tests) and no LLM or external system is involved.
  *
@@ -11,9 +11,9 @@
  * system. It is surfaced to the customer in the reply and recorded in the audit stage timeline.
  *
  * References by workflow:
- *   - cancellation → `CXL-<token>`  (cancellation confirmation or follow-up case)
- *   - damaged_item → `RMA-<token>`  (return / replacement case)
- * Other workflows (invoice questions, product availability) are informational and open no case.
+ *   - cancellation → `CXL-<token>`  (simulated cancellation assessment reference)
+ *   - damaged_item → `RMA-<token>`  (simulated damaged-item intake reference)
+ * Other workflows (invoice questions, product availability) generate no reference.
  *
  * The `<token>` is a short, stable hash of the order id — **not** the order id itself. The order
  * id is treated as PII in this system (masked before any LLM call, and rejected by the response
@@ -37,7 +37,7 @@ function caseToken(prefix: string, orderId: string): string {
 
 /**
  * Build a simulated case reference for an action/intake workflow, or `undefined` when the workflow
- * opens no case or the order id needed to anchor the reference is not available.
+ * generates no reference or the order id needed to anchor it is not available.
  */
 export function buildCaseReference(
   workflow: Workflow,

@@ -13,17 +13,13 @@
  *
  * Each result is validated against `BusinessRuleResultSchema` (the Phase 2 contract).
  *
- * NOTE: the concrete thresholds and status checks below (e.g. the 24h cancellation window,
- * "only delivered orders can be reported damaged") are reasonable defaults for the MVP, not
- * a published policy. They are isolated here so the project owner can adjust them on review.
+ * The thresholds below mirror the approved prototype policies and are isolated here for review.
  *
- * ADR-014 ("Human by Exception v2"): under v2 these eligibility rules are *informational*, not
- * *blocking*. A failed eligibility rule no longer routes the case to a human — it tells the
- * Decision Gate *which* grounded reply to send (e.g. confirm a cancellation vs. explain why it is
- * no longer possible and offer the return path). Only a rule explicitly marked `blocking` forces
- * escalation; none do today, but the field keeps the distinction explicit and future-proof. The
- * genuine human-only signals (disputes, chargebacks, goodwill, fraud, legal) are detected
- * separately by the Escalation-Trigger Guard.
+ * ADR-014 ("Human by Exception v2") distinguishes informational rule failures from blocking
+ * policy exceptions. Cancellation eligibility remains informational so a grounded negative answer
+ * can be automated. The damaged-item 30-day window is blocking because policy explicitly requires
+ * manual review after expiry. Other human-only signals (disputes, chargebacks, goodwill, fraud and
+ * legal matters) are detected separately by the Escalation-Trigger Guard.
  */
 import {
   BusinessRuleResultSchema,
@@ -39,6 +35,8 @@ import type {
 
 /** Hours after an order is placed during which it may be auto-cancelled. */
 export const CANCELLATION_WINDOW_HOURS = 24;
+/** Days after delivery during which a damaged-item claim follows automated intake. */
+export const DAMAGED_ITEM_WINDOW_DAYS = 30;
 
 /** How the Decision Gate treats a failed rule. See `BusinessRuleResultSchema.kind`. */
 type RuleKind = 'blocking' | 'informational';
@@ -91,7 +89,7 @@ export function applyBusinessRules(input: BusinessRuleInput): BusinessRuleResult
     case Workflow.CANCELLATION:
       return cancellationRules(input.structuredFacts, now);
     case Workflow.DAMAGED_ITEM:
-      return damagedItemRules(input.structuredFacts);
+      return damagedItemRules(input.structuredFacts, now);
     case Workflow.INVOICE:
       return invoiceRules(input.structuredFacts);
     case Workflow.PRODUCT_AVAILABILITY:
@@ -138,8 +136,8 @@ function cancellationRules(facts: StructuredSource[], now: Date): BusinessRuleRe
   ];
 }
 
-/** A damage report can be processed only once the order has been delivered. */
-function damagedItemRules(facts: StructuredSource[]): BusinessRuleResult[] {
+/** A damage report needs confirmed delivery and must be within the policy's 30-day window. */
+function damagedItemRules(facts: StructuredSource[], now: Date): BusinessRuleResult[] {
   const fact = findFact(facts, 'order');
   if (!fact) {
     return [recordMissing('damaged_item.order_present', 'No order record was retrieved to evaluate.')];
@@ -151,16 +149,47 @@ function damagedItemRules(facts: StructuredSource[]): BusinessRuleResult[] {
   const order = parsed.data;
 
   const delivered = order.status === 'delivered';
-  return [
+  const rules = [
     makeRule(
       'damaged_item.order_delivered',
       delivered,
       delivered ? RiskLevel.LOW : RiskLevel.MEDIUM,
       delivered
-        ? `Order ${order.orderId} is delivered; a damage report can be processed.`
+        ? `Order ${order.orderId} is delivered; claim timing can be evaluated.`
         : `Order ${order.orderId} status is '${order.status}'; delivery cannot be confirmed for a damage claim.`,
     ),
   ];
+  if (!delivered) return rules;
+
+  if (!order.deliveredAt) {
+    rules.push(
+      makeRule(
+        'damaged_item.within_claim_window',
+        false,
+        RiskLevel.MEDIUM,
+        `Order ${order.orderId} has no delivery timestamp; the claim window cannot be verified.`,
+        ReasonCode.STRUCTURED_DATA_MISSING,
+        'blocking',
+      ),
+    );
+    return rules;
+  }
+
+  const ageDays = (now.getTime() - new Date(order.deliveredAt).getTime()) / 86_400_000;
+  const withinWindow = ageDays >= 0 && ageDays <= DAMAGED_ITEM_WINDOW_DAYS;
+  rules.push(
+    makeRule(
+      'damaged_item.within_claim_window',
+      withinWindow,
+      withinWindow ? RiskLevel.LOW : RiskLevel.MEDIUM,
+      withinWindow
+        ? `Order ${order.orderId} was delivered ${ageDays.toFixed(1)} days ago, within the ${DAMAGED_ITEM_WINDOW_DAYS}-day damage-claim window.`
+        : `Order ${order.orderId} was delivered ${ageDays.toFixed(1)} days ago, outside the ${DAMAGED_ITEM_WINDOW_DAYS}-day damage-claim window.`,
+      withinWindow ? ReasonCode.RULE_PASSED : ReasonCode.DAMAGE_CLAIM_WINDOW_EXPIRED,
+      'blocking',
+    ),
+  );
+  return rules;
 }
 
 /**
