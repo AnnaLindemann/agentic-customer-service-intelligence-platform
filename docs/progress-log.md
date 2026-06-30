@@ -5,6 +5,37 @@ a roadmap phase is implemented and submitted for review.
 
 ---
 
+## Phase 9 — System Evaluation
+
+**Date:** 2026-06-30
+**Status:** Implemented — awaiting review
+
+### Scope
+
+An offline evaluation harness for the complete Phase 8 pipeline: a versioned synthetic dataset,
+curated expected outputs, deterministic per-concern scoring, live provider execution, and generated
+machine/human-readable reports. The evaluator is observational only and cannot alter runtime
+decisions, prompts, compliance, retries, or provider behaviour.
+
+### Completed
+
+- Zod-validated synthetic cases covering every supported workflow, all decision outcomes,
+  Human-by-Exception signals, German/English input, retrieval misses, and audit PII exclusion.
+- Deterministic prompt, intent, slot, decision, hallucination-containment, grounding, escalation,
+  and PII checks.
+- Token, estimated-cost, retry, average latency, P50 and P95 latency aggregation from the passive
+  provider-neutral audit metadata.
+- `npm run evaluate:system`, machine-readable artifacts, a generated Markdown report, and a manual
+  review checklist.
+- Unit tests for dataset coverage, successful scoring, regression detection, and report contents.
+
+### Architectural Notes
+
+Evaluation calls the existing `processEmail` entry point and reads only its result. It introduces
+no runtime stage and no provider dependency. See ADR-015 and `docs/evaluation.md`.
+
+---
+
 ## Phase 5 — Hybrid Retrieval Layer
 
 **Date:** 2026-06-29

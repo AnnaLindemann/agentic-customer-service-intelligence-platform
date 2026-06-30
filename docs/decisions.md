@@ -804,3 +804,58 @@ Trade-offs:
 - the escalation-trigger lexicon is heuristic and will need tuning;
 - "negative" auto-replies (e.g. an ineligible cancellation) depend on cited policy evidence to pass
   the compliance gate; when retrieval returns no usable passage the case still falls back to a human.
+
+---
+
+# ADR-015
+
+## Title
+
+Offline deterministic system evaluation over the public pipeline result.
+
+## Status
+
+Proposed (Phase 9 — System Evaluation; awaiting review)
+
+## Context
+
+Phase 7 audit metrics are intentionally heuristic observability signals, not authoritative quality
+measurement. Phase 9 requires a synthetic dataset, expected outputs, prompt/intent/slot/decision
+review, hallucination and grounding checks, safe-escalation verification, a manual checklist, and
+cost/latency analysis. Evaluation must not weaken the deterministic Decision Engine or turn a
+quality score into another routing mechanism.
+
+## Decision
+
+- Implement `src/evaluation/` as an **offline, read-only consumer** of the complete Phase 8
+  `processEmail` result. Evaluation results never enter the runtime pipeline.
+- Store a versioned synthetic dataset with curated expected outputs under `data/evaluation/` and
+  validate it with Zod before execution. Labels are human-authored; the evaluated model does not
+  grade itself.
+- Score each concern separately and deterministically: versioned/schema-valid/first-pass prompt
+  calls, exact intent and labelled slots, exact deterministic decision, unsafe-draft containment,
+  cited grounding, explicit safe escalation, and known-value audit PII exclusion.
+- Reuse the passive provider-neutral audit record for token, estimated-cost, retry, and LLM-latency
+  analysis. Do not import a vendor SDK or duplicate provider instrumentation in evaluation.
+- Generate both a machine-readable local artifact and a reviewable Markdown report. The report
+  explicitly distinguishes deterministic safety assertions from semantic truth and includes a
+  manual review checklist.
+
+## Consequences
+
+Advantages:
+
+- the complete system is evaluated through its real entry point without changing production
+  behaviour;
+- regressions are attributable to a specific concern instead of one opaque aggregate score;
+- provider/model runs remain comparable through a stable dataset and report contract;
+- Human by Exception is directly tested: genuine exception signals must escalate and normal
+  supported cases must not.
+
+Trade-offs:
+
+- live results vary with provider/model behaviour and require API access;
+- exact expected outputs and synthetic coverage require ongoing human maintenance;
+- citation/compliance checks cannot prove full natural-language entailment, so manual review
+  remains necessary;
+- provider-call latency excludes local retrieval and deterministic processing time.

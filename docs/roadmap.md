@@ -177,6 +177,8 @@ Deliverable
 
 An evaluation report demonstrating the behaviour, quality and limitations of the prototype.
 
+Status: IMPLEMENTED — awaiting review
+
 ---
 # Phase 10 — Production Deployment
 

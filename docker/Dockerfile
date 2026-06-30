@@ -3,7 +3,7 @@
 # Builds the TypeScript application and runs the Express server. Kept intentionally
 # minimal; later phases extend the application, not the build shape.
 
-FROM node:20-alpine
+FROM node:20-bookworm-slim
 
 WORKDIR /app
 

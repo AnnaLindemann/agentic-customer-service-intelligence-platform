@@ -164,6 +164,23 @@ behaviour. It has three concerns, each isolated:
   indicators for observability, **not** ground truth or a measure of model correctness;
   authoritative quality measurement is Phase 9 (System Evaluation).
 
+## System Evaluation (Phase 9)
+
+System Evaluation is an offline consumer of the complete pipeline, not a pipeline stage. It runs a
+versioned, Zod-validated synthetic dataset through the same `processEmail` entry point used by the
+workbench and compares the published result with curated expected outputs.
+
+The scorer is deterministic and read-only. It evaluates prompt reliability, intent and slot
+accuracy, deterministic decision accuracy, hallucination containment, grounding, safe escalation,
+audit PII exclusion, cost, and LLM latency. It cannot change a decision, retry policy, prompt,
+provider call, response, or compliance result. Provider abstraction is preserved because the
+runner uses the configured `LlmClient` through the existing orchestrator; no provider SDK appears
+in the evaluation layer.
+
+Machine-readable results are generated under git-ignored `artifacts/evaluation/`; the latest
+human-readable deliverable is `docs/evaluation-report.md`. See [evaluation.md](evaluation.md) and
+[ADR-015](decisions.md).
+
 The record stores no raw prompt, completion, PII or slot values (slot *keys* and a prompt
 fingerprint only), and its schema is provider-neutral — a future OpenAI or Anthropic adapter
 populates the same shape unchanged. See [decisions.md](decisions.md) (ADR-013).
