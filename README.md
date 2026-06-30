@@ -36,9 +36,9 @@ evidence, the decisions taken, and the reasons for them.
 
 ## Current Status
 
-**Phase 1 — Foundation.** Project is under active development.
+**Phases 1–8 complete. Phase 9 — System Evaluation implemented and awaiting review.**
 
-🚧 Work in Progress
+The complete pipeline, browser workbench, and offline synthetic evaluation harness are runnable.
 
 ---
 
@@ -68,6 +68,8 @@ See [docs/architecture.md](docs/architecture.md) for the processing pipeline.
 | progress-log.md | Phase-by-phase record of completed work |
 | decisions.md | Architecture Decision Records (ADR) |
 | backlog.md | Future improvements (out of MVP scope) |
+| evaluation.md | Phase 9 dataset, metrics and evaluation workflow |
+| evaluation-report.md | Latest generated system-evaluation report |
 
 ---
 

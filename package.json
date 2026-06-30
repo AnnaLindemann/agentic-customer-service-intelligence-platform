@@ -15,7 +15,8 @@
     "validate:data": "tsc && node dist/scripts/validate-data.js",
     "build:index": "tsc && node dist/scripts/build-pdf-index.js",
     "check:retrieval": "tsc && node dist/scripts/check-retrieval.js",
-    "smoke:llm": "tsc && node dist/scripts/smoke-llm.js"
+    "smoke:llm": "tsc && node dist/scripts/smoke-llm.js",
+    "evaluate:system": "tsc && node dist/scripts/evaluate-system.js"
   },
   "dependencies": {
     "@huggingface/transformers": "^4.2.0",

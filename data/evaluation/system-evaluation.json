@@ -1,0 +1,241 @@
+{
+  "name": "Phase 9 synthetic customer-email evaluation",
+  "version": "1.0.0",
+  "description": "Synthetic German and English cases covering supported workflows, clarification paths, Human-by-Exception triggers, PII handling, grounding, prompt reliability, cost and latency.",
+  "cases": [
+    {
+      "id": "availability-in-stock-de",
+      "description": "German in-stock product question",
+      "tags": ["availability", "auto-reply", "de"],
+      "email": "Guten Tag, ist der Vista 45L Backpack derzeit auf Lager und sofort lieferbar? Vielen Dank.",
+      "demoMode": true,
+      "expected": {
+        "intent": "product_availability",
+        "workflow": "product_availability",
+        "decision": "AUTO_REPLY",
+        "slots": { "productName": "Vista 45L Backpack" },
+        "missingSlots": [],
+        "escalationCategory": null,
+        "deliveredDraft": true,
+        "llmStages": ["IntentClassification", "SlotExtraction", "LlmDraft"],
+        "forbiddenAuditValues": []
+      }
+    },
+    {
+      "id": "availability-in-stock-en",
+      "description": "English in-stock product question",
+      "tags": ["availability", "auto-reply", "en"],
+      "email": "Hello, is the StormShield Rain Jacket currently in stock and ready to ship? Thank you.",
+      "demoMode": true,
+      "expected": {
+        "intent": "product_availability",
+        "workflow": "product_availability",
+        "decision": "AUTO_REPLY",
+        "slots": { "productName": "StormShield Rain Jacket" },
+        "missingSlots": [],
+        "escalationCategory": null,
+        "deliveredDraft": true,
+        "llmStages": ["IntentClassification", "SlotExtraction", "LlmDraft"],
+        "forbiddenAuditValues": []
+      }
+    },
+    {
+      "id": "invoice-paid",
+      "description": "Paid invoice status is answered automatically",
+      "tags": ["invoice", "auto-reply"],
+      "email": "Bitte teilen Sie mir den Zahlungsstatus der Rechnung INV-2026-0002 mit.",
+      "demoMode": true,
+      "expected": {
+        "intent": "invoice_question",
+        "workflow": "invoice",
+        "decision": "AUTO_REPLY",
+        "slots": { "invoiceId": "INV-2026-0002" },
+        "missingSlots": [],
+        "escalationCategory": null,
+        "deliveredDraft": true,
+        "llmStages": ["IntentClassification", "SlotExtraction", "LlmDraft"],
+        "forbiddenAuditValues": []
+      }
+    },
+    {
+      "id": "invoice-refunded",
+      "description": "Refunded invoice remains an informational auto-reply",
+      "tags": ["invoice", "auto-reply", "human-by-exception"],
+      "email": "Was ist mit meiner Rechnung INV-2026-0011 passiert? Bitte erläutern Sie mir den aktuellen Status.",
+      "demoMode": true,
+      "expected": {
+        "intent": "invoice_question",
+        "workflow": "invoice",
+        "decision": "AUTO_REPLY",
+        "slots": { "invoiceId": "INV-2026-0011" },
+        "missingSlots": [],
+        "escalationCategory": null,
+        "deliveredDraft": true,
+        "llmStages": ["IntentClassification", "SlotExtraction", "LlmDraft"],
+        "forbiddenAuditValues": []
+      }
+    },
+    {
+      "id": "cancellation-eligible",
+      "description": "Eligible cancellation is auto-confirmed on the fixed demo clock",
+      "tags": ["cancellation", "auto-reply", "action"],
+      "email": "Bitte stornieren Sie meine Bestellung 10004. Ich habe sie versehentlich aufgegeben.",
+      "demoMode": true,
+      "expected": {
+        "intent": "cancellation_request",
+        "workflow": "cancellation",
+        "decision": "AUTO_REPLY",
+        "slots": { "orderId": "10004" },
+        "missingSlots": [],
+        "escalationCategory": null,
+        "deliveredDraft": true,
+        "llmStages": ["IntentClassification", "SlotExtraction", "LlmDraft"],
+        "forbiddenAuditValues": []
+      }
+    },
+    {
+      "id": "cancellation-shipped",
+      "description": "Ineligible cancellation is explained rather than escalated",
+      "tags": ["cancellation", "auto-reply", "human-by-exception"],
+      "email": "Kann ich meine bereits versandte Bestellung 10002 noch stornieren?",
+      "demoMode": true,
+      "expected": {
+        "intent": "cancellation_request",
+        "workflow": "cancellation",
+        "decision": "AUTO_REPLY",
+        "slots": { "orderId": "10002" },
+        "missingSlots": [],
+        "escalationCategory": null,
+        "deliveredDraft": true,
+        "llmStages": ["IntentClassification", "SlotExtraction", "LlmDraft"],
+        "forbiddenAuditValues": []
+      }
+    },
+    {
+      "id": "damaged-item-intake",
+      "description": "Delivered damaged item opens automated intake",
+      "tags": ["damaged-item", "auto-reply", "intake"],
+      "email": "Meine Bestellung 10003 ist angekommen, aber die Granite Hiking Boots sind beschädigt und die Sohle ist eingerissen. Was soll ich tun?",
+      "demoMode": true,
+      "expected": {
+        "intent": "damaged_item",
+        "workflow": "damaged_item",
+        "decision": "AUTO_REPLY",
+        "slots": { "orderId": "10003", "productName": "Granite Hiking Boots" },
+        "missingSlots": [],
+        "escalationCategory": null,
+        "deliveredDraft": true,
+        "llmStages": ["IntentClassification", "SlotExtraction", "LlmDraft"],
+        "forbiddenAuditValues": []
+      }
+    },
+    {
+      "id": "cancellation-missing-order",
+      "description": "Missing customer identifier requests information",
+      "tags": ["cancellation", "ask"],
+      "email": "Ich möchte meine Bestellung stornieren, kenne aber meine Bestellnummer nicht.",
+      "demoMode": true,
+      "expected": {
+        "intent": "cancellation_request",
+        "workflow": "cancellation",
+        "decision": "ASK_FOR_MORE_INFORMATION",
+        "slots": {},
+        "missingSlots": ["orderId"],
+        "escalationCategory": null,
+        "deliveredDraft": true,
+        "llmStages": ["IntentClassification", "SlotExtraction", "LlmDraft"],
+        "forbiddenAuditValues": []
+      }
+    },
+    {
+      "id": "cancellation-unresolved-order",
+      "description": "Unknown order identifier requests confirmation",
+      "tags": ["cancellation", "ask", "retrieval-miss"],
+      "email": "Bitte stornieren Sie meine Bestellung 99999.",
+      "demoMode": true,
+      "expected": {
+        "intent": "cancellation_request",
+        "workflow": "cancellation",
+        "decision": "ASK_FOR_MORE_INFORMATION",
+        "slots": { "orderId": "99999" },
+        "missingSlots": [],
+        "escalationCategory": null,
+        "deliveredDraft": true,
+        "llmStages": ["IntentClassification", "SlotExtraction", "LlmDraft"],
+        "forbiddenAuditValues": []
+      }
+    },
+    {
+      "id": "legal-escalation",
+      "description": "Legal threat is reserved for a human",
+      "tags": ["cancellation", "escalation", "legal"],
+      "email": "Ich bestehe auf der Stornierung von Bestellung 10002 und schalte sonst meinen Anwalt ein.",
+      "demoMode": true,
+      "expected": {
+        "intent": "cancellation_request",
+        "workflow": "cancellation",
+        "decision": "HUMAN_ESCALATION",
+        "slots": { "orderId": "10002" },
+        "missingSlots": [],
+        "escalationCategory": "legal",
+        "deliveredDraft": false,
+        "llmStages": ["IntentClassification", "SlotExtraction"],
+        "forbiddenAuditValues": []
+      }
+    },
+    {
+      "id": "chargeback-escalation",
+      "description": "Chargeback request is reserved for a human",
+      "tags": ["invoice", "escalation", "chargeback"],
+      "email": "I want a chargeback for invoice INV-2026-0002 because I dispute this payment.",
+      "demoMode": true,
+      "expected": {
+        "intent": "invoice_question",
+        "workflow": "invoice",
+        "decision": "HUMAN_ESCALATION",
+        "slots": { "invoiceId": "INV-2026-0002" },
+        "missingSlots": [],
+        "escalationCategory": "chargeback",
+        "deliveredDraft": false,
+        "llmStages": ["IntentClassification", "SlotExtraction"],
+        "forbiddenAuditValues": []
+      }
+    },
+    {
+      "id": "out-of-scope-careers",
+      "description": "Understood career enquiry is redirected without human handling",
+      "tags": ["out-of-scope", "redirect"],
+      "email": "Ich möchte mich auf eine Stelle bei Ihnen bewerben. An wen kann ich mich wenden?",
+      "demoMode": true,
+      "expected": {
+        "intent": "out_of_scope",
+        "workflow": "unsupported",
+        "decision": "OUT_OF_SCOPE",
+        "slots": {},
+        "missingSlots": [],
+        "escalationCategory": null,
+        "deliveredDraft": false,
+        "llmStages": ["IntentClassification", "SlotExtraction"],
+        "forbiddenAuditValues": []
+      }
+    },
+    {
+      "id": "pii-masked-before-llm",
+      "description": "Known customer email is resolved locally but excluded from audit metadata",
+      "tags": ["pii", "cancellation", "audit"],
+      "email": "Meine E-Mail ist noah.kim@example.com. Bitte stornieren Sie Bestellung 10004.",
+      "demoMode": true,
+      "expected": {
+        "intent": "cancellation_request",
+        "workflow": "cancellation",
+        "decision": "AUTO_REPLY",
+        "slots": { "orderId": "10004", "customerEmail": "noah.kim@example.com" },
+        "missingSlots": [],
+        "escalationCategory": null,
+        "deliveredDraft": true,
+        "llmStages": ["IntentClassification", "SlotExtraction", "LlmDraft"],
+        "forbiddenAuditValues": ["noah.kim@example.com"]
+      }
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 # Phase 9 — System Evaluation Report
 
-Generated: 2026-06-30T10:01:12.864Z
+Generated: 2026-06-30T10:03:29.934Z
 Dataset: Phase 9 synthetic customer-email evaluation (1.0.0, 13 cases)
 Provider/model: groq / openai/gpt-oss-20b
 
@@ -12,10 +12,12 @@ Provider/model: groq / openai/gpt-oss-20b
 
 | Area | Passed | Rate |
 |---|---:|---:|
-| prompt | 75/85 | 88.2% |
-| intent | 26/26 | 100.0% |
+| prompt | 84/98 | 85.7% |
+| intent | 13/13 | 100.0% |
+| workflow | 13/13 | 100.0% |
 | slots | 13/14 | 92.9% |
-| decision | 33/39 | 84.6% |
+| decision | 13/13 | 100.0% |
+| response | 7/13 | 53.8% |
 | hallucination | 13/13 | 100.0% |
 | grounding | 7/13 | 53.8% |
 | escalation | 13/13 | 100.0% |
@@ -26,12 +28,12 @@ Hallucination detection is a deterministic safety assertion: no draft may be del
 ## Cost and Latency
 
 - LLM calls: 36
-- Tokens: 26156
-- Estimated cost: $0.005798
-- Average summed LLM latency per case: 2469 ms
-- P50 / P95 summed LLM latency per case: 2234 / 5259 ms
-- Average end-to-end pipeline latency per case: 2562 ms
-- P50 / P95 end-to-end pipeline latency per case: 2278 / 5302 ms
+- Tokens: 22674
+- Estimated cost: $0.005058
+- Average summed LLM latency per case: 2989 ms
+- P50 / P95 summed LLM latency per case: 2088 / 7635 ms
+- Average end-to-end pipeline latency per case: 3070 ms
+- P50 / P95 end-to-end pipeline latency per case: 2181 / 7678 ms
 
 LLM latency is summed provider-call latency. End-to-end latency is measured around the complete `processEmail` call and includes local retrieval and deterministic stages.
 
@@ -46,8 +48,8 @@ LLM latency is summed provider-call latency. End-to-end latency is measured arou
 | cancellation-eligible | FAIL | cancellation_request | AUTO_REPLY | draft_delivery, prompt_LlmDraft, prompt_LlmDraft_first_pass, grounding_verified |
 | cancellation-shipped | FAIL | cancellation_request | AUTO_REPLY | draft_delivery, prompt_LlmDraft, prompt_LlmDraft_first_pass, grounding_verified |
 | damaged-item-intake | FAIL | damaged_item | AUTO_REPLY | draft_delivery, prompt_LlmDraft, prompt_LlmDraft_first_pass, grounding_verified |
-| cancellation-missing-order | FAIL | cancellation_request | ASK_FOR_MORE_INFORMATION | draft_delivery, grounding_verified |
-| cancellation-unresolved-order | FAIL | cancellation_request | ASK_FOR_MORE_INFORMATION | slot_orderId, draft_delivery, prompt_SlotExtraction, prompt_SlotExtraction_first_pass, grounding_verified |
+| cancellation-missing-order | FAIL | cancellation_request | ASK_FOR_MORE_INFORMATION | draft_delivery, prompt_LlmDraft, prompt_LlmDraft_first_pass, grounding_verified |
+| cancellation-unresolved-order | FAIL | cancellation_request | ASK_FOR_MORE_INFORMATION | slot_orderId, draft_delivery, prompt_SlotExtraction, prompt_SlotExtraction_first_pass, prompt_LlmDraft, prompt_LlmDraft_first_pass, grounding_verified |
 | legal-escalation | PASS | cancellation_request | HUMAN_ESCALATION | — |
 | chargeback-escalation | PASS | invoice_question | HUMAN_ESCALATION | — |
 | out-of-scope-careers | PASS | out_of_scope | OUT_OF_SCOPE | — |
@@ -82,8 +84,10 @@ LLM latency is summed provider-call latency. End-to-end latency is measured arou
 ### cancellation-missing-order
 
 - draft_delivery: expected true; actual false.
+- prompt_LlmDraft: expected valid versioned JSON output; actual transport_error, version=response-generation/v2.
+- prompt_LlmDraft_first_pass: expected valid output with 0 retries; actual transport_error, 0 retries.
 - grounding_verified: expected grounded draft with citations; actual not_applicable, 0 citation(s).
-- Failed compliance checks: matches_decision.
+- Failed compliance checks: llm_generation.
 
 ### cancellation-unresolved-order
 
@@ -91,8 +95,10 @@ LLM latency is summed provider-call latency. End-to-end latency is measured arou
 - draft_delivery: expected true; actual false.
 - prompt_SlotExtraction: expected valid versioned JSON output; actual transport_error, version=slot-extraction/v1.
 - prompt_SlotExtraction_first_pass: expected valid output with 0 retries; actual transport_error, 0 retries.
+- prompt_LlmDraft: expected valid versioned JSON output; actual transport_error, version=response-generation/v2.
+- prompt_LlmDraft_first_pass: expected valid output with 0 retries; actual transport_error, 0 retries.
 - grounding_verified: expected grounded draft with citations; actual not_applicable, 0 citation(s).
-- Failed compliance checks: matches_decision.
+- Failed compliance checks: llm_generation.
 
 ### pii-masked-before-llm
 
